@@ -24,6 +24,10 @@ export default defineConfig(
       "@typescript-eslint/restrict-template-expressions": ["error", { allowNumber: true }],
       // Source code avoids the "!" operator; a named type assertion reads more clearly.
       "@typescript-eslint/non-nullable-type-assertion-style": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", ignoreRestSiblings: true },
+      ],
       eqeqeq: ["error", "always"],
       "no-console": "error",
     },

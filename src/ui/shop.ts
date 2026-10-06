@@ -9,6 +9,7 @@ import {
   setPrice,
   summary,
   tradeDay,
+  type DayResult,
   type FinalSummary,
   type Run,
 } from "../domain/run";
@@ -68,13 +69,11 @@ export class Shop {
 
   trade(): ActionOutcome {
     return this.commit(tradeDay(this.current, this.catalogue), (run) => {
-      const day = run.history[run.history.length - 1];
-      const sold =
-        day === undefined
-          ? ""
-          : `sold ${plural(day.totals.unitsSold, "item")} for ${formatEuros(day.totals.revenueCents)}`;
+      // An accepted trade always adds exactly one day to the history.
+      const day = run.history[run.history.length - 1] as DayResult;
+      const sold = `sold ${plural(day.totals.unitsSold, "item")} for ${formatEuros(day.totals.revenueCents)}`;
       const ending = isComplete(run) ? " That was the last day. Here are your final results." : "";
-      return `Day ${day?.day ?? run.currentDay} is done: ${sold}.${ending}`;
+      return `Day ${day.day} is done: ${sold}.${ending}`;
     });
   }
 
