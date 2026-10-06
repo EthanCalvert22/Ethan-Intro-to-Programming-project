@@ -1,0 +1,25 @@
+{
+  "business": "Brew & Byte",
+  "currency": "EUR",
+  "note": "All money is in integer euro cents: 280 means €2.80.",
+  "products": [
+    {
+      "id": "flat-white",
+      "name": "Flat white",
+      "unitCostCents": 120,
+      "referencePriceCents": 280
+    },
+    {
+      "id": "toastie",
+      "name": "Toastie",
+      "unitCostCents": 200,
+      "referencePriceCents": 450
+    },
+    {
+      "id": "brownie",
+      "name": "Brownie",
+      "unitCostCents": 70,
+      "referencePriceCents": 180
+    }
+  ]
+}
