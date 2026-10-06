@@ -36,7 +36,7 @@ for (const [label, viewport] of [
       await page.getByTestId("final-results").scrollIntoViewIfNeeded();
       await page.screenshot({ path: `${DIR}/${label}-3-final.png` });
 
-      await page.getByRole("button", { name: "New run" }).click();
+      await page.getByRole("button", { name: "New run", exact: true }).click();
       await expect(page.getByRole("dialog")).toBeVisible();
       await page.screenshot({ path: `${DIR}/${label}-4-new-run-dialog.png` });
     });

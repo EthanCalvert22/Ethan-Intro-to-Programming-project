@@ -37,6 +37,8 @@ export default defineConfig(
     files: ["tests/**/*.ts", "e2e/**/*.ts"],
     rules: {
       "@typescript-eslint/no-non-null-assertion": "off",
+      // Lets a test helper say which kind of element it expects to find.
+      "@typescript-eslint/no-unnecessary-type-parameters": "off",
     },
   },
   {

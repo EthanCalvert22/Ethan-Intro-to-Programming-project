@@ -212,7 +212,7 @@ class CafeScreen {
   private refresh(): void {
     const run = this.run;
     this.dayValue.textContent = isComplete(run)
-      ? `${RUN_LENGTH_DAYS} of ${RUN_LENGTH_DAYS} complete`
+      ? "Complete"
       : `${run.currentDay} of ${RUN_LENGTH_DAYS}`;
     this.cashValue.textContent = formatEuros(run.cashCents);
     const onShelf = Object.values(run.stock).reduce((total, units) => total + units, 0);
