@@ -210,6 +210,14 @@ describe("setting prices", () => {
     expect(openButton().disabled).toBe(false);
   });
 
+  it("keeps a price the player is still typing when something else changes", () => {
+    start();
+    type(priceInput("toastie"), "5.1");
+    buy("brownie", 2);
+    expect(priceInput("toastie").value).toBe("5.1");
+    expect(text("#price-hint-toastie")).toContain("Press Set price or Enter to use it.");
+  });
+
   it("re-entering the current price changes nothing and saves nothing", () => {
     start();
     setPrice("flat-white", "2.8");
