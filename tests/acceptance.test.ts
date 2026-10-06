@@ -179,16 +179,19 @@ describe("spec/acceptance.json: scenarios", () => {
         const writes = storage.writes - writesBefore;
 
         if ("error" in step.expect) {
-          expect(outcome === "no-action" ? "accepted" : outcome.ok ? "accepted" : outcome.kind, label).toBe(
-            step.expect.error,
-          );
+          expect(
+            outcome === "no-action" ? "accepted" : outcome.ok ? "accepted" : outcome.kind,
+            label,
+          ).toBe(step.expect.error);
           expect(shop.run, `${label}: a rejected action must change nothing`).toEqual(before);
           expect(writes, `${label}: a rejected action must save nothing`).toBe(0);
         } else if (outcome === "no-action") {
           expect(shop.run, label).toEqual(before);
           expect(writes, `${label}: nothing to save`).toBe(0);
         } else {
-          expect(outcome.ok ? "accepted" : `${outcome.kind}: ${outcome.message}`, label).toBe("accepted");
+          expect(outcome.ok ? "accepted" : `${outcome.kind}: ${outcome.message}`, label).toBe(
+            "accepted",
+          );
           expect(writes, `${label}: an accepted action is saved exactly once`).toBe(1);
           expect(JSON.parse(storage.getItem(RUN_KEY) ?? "null"), `${label}: saved at once`).toEqual(
             shop.run,
@@ -213,7 +216,9 @@ describe("spec/acceptance.json: scenarios", () => {
             const product = catalogue.find((entry) => entry.id === productId);
             expect(product, label).toBeDefined();
             if (product !== undefined) {
-              expect(demand(priceOf(shop.run, product), product.referencePriceCents)).toBe(expected);
+              expect(demand(priceOf(shop.run, product), product.referencePriceCents)).toBe(
+                expected,
+              );
             }
           }
         }

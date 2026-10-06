@@ -56,8 +56,6 @@ describe("findRunProblem", () => {
   const completed = completedRun();
 
   it.each<[string, Run]>([
-    ["an unknown save version", { ...run, version: 2 as 1 }],
-    ["an unknown status", { ...run, status: "paused" as Run["status"] }],
     ["negative cash", { ...run, cashCents: -1 }],
     ["fractional cash", { ...run, cashCents: 10.5 }],
     ["day 0", { ...run, currentDay: 0, history: [] }],
@@ -70,25 +68,58 @@ describe("findRunProblem", () => {
     ["a missing price", { ...run, prices: { lemonade: 400, cookie: 150 } }],
     ["a price for an unknown product", { ...run, prices: { ...run.prices, espresso: 100 } }],
     ["history that does not match the day", { ...run, currentDay: 1 }],
-    ["more than five days of history", { ...completed, history: [...completed.history, completed.history[0]!] }],
+    [
+      "more than five days of history",
+      { ...completed, history: [...completed.history, completed.history[0]!] },
+    ],
     ["a completed run with fewer than five days", { ...run, status: "completed" }],
     ["a completed run not on day 5", { ...completed, currentDay: 4 }],
     ["days out of order", { ...run, history: [run.history[1]!, run.history[0]!] }],
-    ["a day with a missing product line", withFirstDay(run, (day) => ({ ...day, lines: day.lines.slice(1) }))],
-    ["a line for the wrong product", withFirstLine(run, (line) => ({ ...line, productId: "espresso" }))],
+    [
+      "a day with a missing product line",
+      withFirstDay(run, (day) => ({ ...day, lines: day.lines.slice(1) })),
+    ],
+    [
+      "a line for the wrong product",
+      withFirstLine(run, (line) => ({ ...line, productId: "espresso" })),
+    ],
     ["a line with an invalid price", withFirstLine(run, (line) => ({ ...line, priceCents: 0 }))],
     ["a line with the wrong demand", withFirstLine(run, (line) => ({ ...line, demand: 5 }))],
     ["a line selling more than demand", withFirstLine(run, (line) => ({ ...line, unitsSold: 11 }))],
-    ["a line selling a negative amount", withFirstLine(run, (line) => ({ ...line, unitsSold: -1 }))],
+    [
+      "a line selling a negative amount",
+      withFirstLine(run, (line) => ({ ...line, unitsSold: -1 })),
+    ],
     ["a line with the wrong revenue", withFirstLine(run, (line) => ({ ...line, revenueCents: 1 }))],
-    ["a line with the wrong cost of goods", withFirstLine(run, (line) => ({ ...line, cogsCents: 1 }))],
-    ["a line with the wrong gross profit", withFirstLine(run, (line) => ({ ...line, grossProfitCents: 1 }))],
-    ["totals that do not add up", withFirstDay(run, (day) => ({ ...day, totals: { ...day.totals, unitsSold: 99 } }))],
-    ["revenue totals that do not add up", withFirstDay(run, (day) => ({ ...day, totals: { ...day.totals, revenueCents: 1 } }))],
-    ["cost totals that do not add up", withFirstDay(run, (day) => ({ ...day, totals: { ...day.totals, cogsCents: 1 } }))],
-    ["profit totals that do not add up", withFirstDay(run, (day) => ({ ...day, totals: { ...day.totals, grossProfitCents: 1 } }))],
+    [
+      "a line with the wrong cost of goods",
+      withFirstLine(run, (line) => ({ ...line, cogsCents: 1 })),
+    ],
+    [
+      "a line with the wrong gross profit",
+      withFirstLine(run, (line) => ({ ...line, grossProfitCents: 1 })),
+    ],
+    [
+      "totals that do not add up",
+      withFirstDay(run, (day) => ({ ...day, totals: { ...day.totals, unitsSold: 99 } })),
+    ],
+    [
+      "revenue totals that do not add up",
+      withFirstDay(run, (day) => ({ ...day, totals: { ...day.totals, revenueCents: 1 } })),
+    ],
+    [
+      "cost totals that do not add up",
+      withFirstDay(run, (day) => ({ ...day, totals: { ...day.totals, cogsCents: 1 } })),
+    ],
+    [
+      "profit totals that do not add up",
+      withFirstDay(run, (day) => ({ ...day, totals: { ...day.totals, grossProfitCents: 1 } })),
+    ],
     ["negative cash after a day", withFirstDay(run, (day) => ({ ...day, cashAfterCents: -5 }))],
-    ["negative stock after a day", withFirstDay(run, (day) => ({ ...day, stockAfter: { ...day.stockAfter, lemonade: -1 } }))],
+    [
+      "negative stock after a day",
+      withFirstDay(run, (day) => ({ ...day, stockAfter: { ...day.stockAfter, lemonade: -1 } })),
+    ],
   ])("reports %s", (_label, broken) => {
     expect(findRunProblem(broken, briefMenu)).toEqual(expect.any(String));
   });

@@ -1,14 +1,15 @@
 import js from "@eslint/js";
+import { defineConfig } from "eslint/config";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
-export default tseslint.config(
+export default defineConfig(
   {
     ignores: ["dist", "coverage", "playwright-report", "test-results", "node_modules"],
   },
   js.configs.recommended,
-  ...tseslint.configs.strictTypeChecked,
-  ...tseslint.configs.stylisticTypeChecked,
+  tseslint.configs.strictTypeChecked,
+  tseslint.configs.stylisticTypeChecked,
   {
     languageOptions: {
       globals: { ...globals.browser, ...globals.node },
@@ -21,8 +22,17 @@ export default tseslint.config(
     },
     rules: {
       "@typescript-eslint/restrict-template-expressions": ["error", { allowNumber: true }],
+      // Source code avoids the "!" operator; a named type assertion reads more clearly.
+      "@typescript-eslint/non-nullable-type-assertion-style": "off",
       eqeqeq: ["error", "always"],
       "no-console": "error",
+    },
+  },
+  {
+    // In tests, "!" is a fine way to say "this must exist, or the test should fail".
+    files: ["tests/**/*.ts", "e2e/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-non-null-assertion": "off",
     },
   },
   {

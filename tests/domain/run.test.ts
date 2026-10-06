@@ -80,9 +80,9 @@ describe("buy (CT02)", () => {
   });
 
   it("refuses an order one cent more than the cash", () => {
-    expect(rejectedKind(buy({ ...newRun(briefMenu), cashCents: 999 }, briefMenu, "lemonade", 5))).toBe(
-      "NotAffordable",
-    );
+    expect(
+      rejectedKind(buy({ ...newRun(briefMenu), cashCents: 999 }, briefMenu, "lemonade", 5)),
+    ).toBe("NotAffordable");
   });
 
   it.each([0, -1, 2.5, Number.NaN, Number.POSITIVE_INFINITY, 1001, Number.MAX_SAFE_INTEGER + 2])(

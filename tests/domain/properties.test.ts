@@ -91,7 +91,9 @@ describe.each([
           if (action.kind === "trade") {
             const day = after.history[after.history.length - 1]!;
             // Across a trade, cash + stock at cost changes by exactly the gross profit.
-            expect(worth(after, catalogue) - worth(run, catalogue)).toBe(day.totals.grossProfitCents);
+            expect(worth(after, catalogue) - worth(run, catalogue)).toBe(
+              day.totals.grossProfitCents,
+            );
             expect(after.history.length).toBe(run.history.length + 1);
             profitSoFar += day.totals.grossProfitCents;
           } else {
@@ -114,9 +116,12 @@ describe.each([
   it("always reaches a completed run after exactly five trades, whatever happens in between", () => {
     fc.assert(
       fc.property(
-        fc.array(actionArbitrary(catalogue).filter((action) => action.kind !== "trade"), {
-          maxLength: 10,
-        }),
+        fc.array(
+          actionArbitrary(catalogue).filter((action) => action.kind !== "trade"),
+          {
+            maxLength: 10,
+          },
+        ),
         (setup) => {
           let run = newRun(catalogue);
           for (let day = 1; day <= RUN_LENGTH_DAYS; day += 1) {

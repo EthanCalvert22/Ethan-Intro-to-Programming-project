@@ -97,7 +97,11 @@ describe("a full five-day Brew & Byte run", () => {
     expect(finished.history.map((day) => day.cashAfterCents)).toEqual([
       13650, 18700, 19900, 19900, 22660,
     ]);
-    expect(finished.history.map((day) => Object.fromEntries(day.lines.map((line) => [line.productId, line.unitsSold])))).toEqual(handSales);
+    expect(
+      finished.history.map((day) =>
+        Object.fromEntries(day.lines.map((line) => [line.productId, line.unitsSold])),
+      ),
+    ).toEqual(handSales);
   });
 
   it("ends complete with the hand-calculated final result", () => {
@@ -134,7 +138,7 @@ describe("a full five-day Brew & Byte run", () => {
       }
     }
     const sold = (productId: string) =>
-      handSales.reduce((total, sales) => total + (sales[productId as keyof typeof sales] ?? 0), 0);
+      handSales.reduce((total, sales) => total + sales[productId as keyof typeof sales], 0);
     const unsoldValue = Object.keys(unitCost).reduce(
       (total, productId) =>
         total + ((bought[productId] ?? 0) - sold(productId)) * (unitCost[productId] ?? 0),
