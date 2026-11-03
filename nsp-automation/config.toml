@@ -43,6 +43,13 @@ dq = "Not a Fit"
 "cant afford" = "Can't Afford Work Fee"
 "too small" = "Too Small"
 
+# Handbook figures (Nov 2026). The email guard rail and the prompts use these.
+[handbook]
+min_sale_value_musd = 5      # bare minimum
+ideal_sale_value_musd = 10   # ideal
+work_fee_k = [60, 150]
+success_fee_pct = [6, 8]
+
 [calendly]
 user_uri = "https://api.calendly.com/users/f1ae8411-c862-443d-833e-96d86d50e844"
 event_type_names = ["M&A Advisory Meeting", "M&A Advisory Meeting (S)"]

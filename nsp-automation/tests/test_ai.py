@@ -54,12 +54,12 @@ def test_live_mode_refuses_without_key(cfg):
 
 def test_guard_rails_on_model_output():
     d = json.loads(json.dumps(GOOD))
-    d["email_body"] += "Work fee is $150K and success fee 10%. [Name]"
+    d["email_body"] += "Work fee is $200K and success fee 10%. [Name]"
     d["verdict"], d["attach_nda"], d["score"] = "too_small", True, 14
     w = followup.check_output(d)
     assert "—" not in d["email_body"]
     assert d["attach_nda"] is False and d["score"] == 10
-    assert any("$150K" in x for x in w) and any("10%" in x for x in w) and any("bracket" in x for x in w)
+    assert any("$200K" in x for x in w) and any("10%" in x for x in w) and any("bracket" in x for x in w)
 
 
 def test_apply_plan_never_auto_applies_lost_stage(cfg):
@@ -192,3 +192,9 @@ def test_overnight_batch_request_is_accepted_by_sdk(cfg, fake_api):
     body = fake_api.requests[-1]["body"]
     assert fake_api.requests[-1]["path"].startswith("/v1/messages/batches")
     assert "fallbacks" not in body["requests"][0]["params"]  # not allowed on the Batch API
+
+
+def test_handbook_fee_range_allows_150k(cfg):
+    d = json.loads(json.dumps(GOOD))
+    d["email_body"] += "The work fee is $150K and the success fee 7%."
+    assert not [w for w in followup.check_output(d, cfg["handbook"]) if "fee" in w]

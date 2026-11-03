@@ -4,7 +4,7 @@ Source: Notion page "M&A Email Templates". Refresh with `nsp sync-prompts`.
 
 Templates for post-call follow-ups. Style: friendly but direct, honest, formal and articulate sentences, no em dashes, concise. Anything covered on the call is framed as already discussed. Fill every [bracket] from the transcript, Ethan's notes and research on the company and sector.
 
-## 1. Strong lead (likely $10M+ and selling)
+## 1. Strong lead (likely $5M+ and selling, ideally $10M+)
 
 Attach the NDA (Word) unless already signed.
 
@@ -67,7 +67,7 @@ Hi [Name],
 
 Thank you for your time today and for being so open about the business.
 
-I want to be honest with you rather than leave things open-ended. Our M&A process is built around businesses that would typically sell for $10M or more, and at its current size I do not believe we would be the right advisers to deliver the outcome you deserve. [Optional: a firm that specialises in transactions of your size, such as a business broker, is likely to serve you better.]
+I want to be honest with you rather than leave things open-ended. Our M&A process is built around businesses that would typically sell for $5M or more, and at its current size I do not believe we would be the right advisers to deliver the outcome you deserve. [Optional: a firm that specialises in transactions of your size, such as a business broker, is likely to serve you better.]
 
 That said, [one genuine positive about the business]. If it reaches [scale they mentioned] in the future, I would be glad to revisit the conversation.
 

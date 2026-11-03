@@ -13,7 +13,7 @@ from .llm import LLM, system_blocks
 BRIEF_INSTRUCTIONS = """Write Ethan's morning brief from the data below. Plain text, using exactly these sections:
 
 ## Top 5 live deals
-One line each: name (company), why it ranks (size against the $10M threshold, momentum such as NDA,
+One line each: name (company), why it ranks (size against the $5M minimum and $10M ideal, momentum such as NDA,
 materials or senior team involvement, urgency such as competing buyers, deadlines, or Ethan owing a reply).
 
 ## Today's calls

@@ -26,7 +26,8 @@ Run `python -m nsp check` at any time to see which credentials are set (it never
 - [ ] **Which NDA file.** Drive search found "NSP NDA Form in Word.docx" (~335KB, in a shared drive), and the "NSP M&A Templates" folder looked empty to me. Your brief says the Word NDA is ~20KB. Put the right file's ID in `gmail.nda_drive_file_id` (or a local path in `gmail.nda_local_path`).
 - [ ] **Referral filter.** Add the other VPs' addresses to the third filter in `config.toml`, or leave it skipped.
 - [ ] **Capital team contact** for template 5 (handover). The model leaves `[colleague]` unless you name someone in the template; the guard rail then flags the bracket.
-- [ ] **Fee wording on calls.** See REVIEW.md: on recent calls you quoted a $60K to $150K work fee and a $5M floor, while the playbook says $60K to $100K and $10M. The email guard rail only enforces the playbook figures.
+- [x] **Handbook figures.** Updated to a $60K to $150K work fee, 6% to 8% success fee, $5M minimum and $10M+ ideal (`[handbook]` in config.toml and `prompts/`).
+- [ ] **Update the Notion pages to match.** The M&A Automation Playbook still says $60K to $100K and $10M, and template 4 on the M&A Email Templates page still says "$10M or more" (the local copy now says $5M). Do not run `nsp sync-prompts` until the Notion templates page is updated, or it will copy the old wording back.
 
 ## Deployment
 

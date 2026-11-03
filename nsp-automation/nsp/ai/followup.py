@@ -40,7 +40,7 @@ SCHEMA = {
     "properties": {
         "lead_name": _S, "first_name": _S, "company": _S,
         "verdict": {"type": "string", "enum": VERDICTS},
-        "score": {"type": "integer", "description": "1-10 lead quality for a $10M+ sell-side mandate"},
+        "score": {"type": "integer", "description": "1-10 lead quality: under $5M sale value scores low, $10M+ scores highest"},
         "summary": {"type": "string", "description": "Exactly three short lines separated by newlines"},
         "facts": {
             "type": "object", "additionalProperties": False,
@@ -64,10 +64,10 @@ INSTRUCTIONS = """Assess this M&A discovery call and draft Ethan's follow-up.
 Steps:
 1. Read the transcript. Identify the lead (the non-NSP participant), the company and what they want.
 2. Choose the verdict:
-   - strong: selling (all or a majority) and plausibly a $10M+ sale value.
-   - promising: selling and possibly $10M+, but key numbers are missing.
+   - strong: selling (all or a majority) and plausibly a $5M+ sale value (ideal: $10M+).
+   - promising: selling and possibly $5M+, but key numbers are missing.
    - not_ready: a good business, but the timing for a sale is 12+ months out.
-   - too_small: sale value clearly below $10M.
+   - too_small: sale value clearly below the $5M minimum.
    - not_selling: no real intention to sell.
    - capital_raise: they want to raise capital rather than sell.
    - no_show: the call did not really happen or there is no substance.
@@ -77,7 +77,7 @@ Steps:
    Never leave a [bracket] in the email. Never invent figures or deals; only cite comparables the call mentioned.
    For no_show, write a two-line note offering to rebook.
 5. attach_nda is true for templates 1 and 2 only.
-6. Write as Ethan: short, confident, no em dashes, fees only within $60K to $100K work fee and 6% to 8% success fee.
+6. Write as Ethan: short, confident, no em dashes, fees only within $60K to $150K work fee and 6% to 8% success fee.
 """
 
 STUB = {
@@ -124,8 +124,11 @@ def build_request(llm: LLM, t: Transcript, notes: str = "") -> dict:
 FEE_RE = re.compile(r"\$\s?(\d{2,3})\s?[kK]")
 
 
-def check_output(data: dict) -> list[str]:
+def check_output(data: dict, handbook: dict | None = None) -> list[str]:
     """Deterministic guard rails on the model's draft."""
+    hb = handbook or {}
+    fee_lo, fee_hi = hb.get("work_fee_k", [60, 150])
+    pct_lo, pct_hi = hb.get("success_fee_pct", [6, 8])
     warnings = []
     data["email_body"] = house_style(data.get("email_body", ""))
     data["email_subject"] = house_style(data.get("email_subject", ""))
@@ -135,11 +138,11 @@ def check_output(data: dict) -> list[str]:
     if "[" in data["email_body"] and "]" in data["email_body"]:
         warnings.append("email still contains a [bracket]; review before sending")
     for m in FEE_RE.finditer(data["email_body"]):
-        if not 60 <= int(m.group(1)) <= 100:
-            warnings.append(f"email quotes ${m.group(1)}K, outside the $60K to $100K work fee range")
+        if not fee_lo <= int(m.group(1)) <= fee_hi:
+            warnings.append(f"email quotes ${m.group(1)}K, outside the ${fee_lo}K to ${fee_hi}K work fee range")
     for pct in re.findall(r"(\d+(?:\.\d+)?)\s?%", data["email_body"]):
-        if "success" in data["email_body"].lower() and not 6 <= float(pct) <= 8:
-            warnings.append(f"email quotes {pct}%, outside the 6% to 8% success fee range")
+        if "success" in data["email_body"].lower() and not pct_lo <= float(pct) <= pct_hi:
+            warnings.append(f"email quotes {pct}%, outside the {pct_lo}% to {pct_hi}% success fee range")
     if data.get("verdict") in ("strong", "promising"):
         data["attach_nda"] = True
     elif data.get("verdict") in ("too_small", "not_selling", "capital_raise", "no_show"):
@@ -150,7 +153,7 @@ def check_output(data: dict) -> list[str]:
 def assess(llm: LLM, t: Transcript, notes: str = "") -> Assessment:
     params = build_request(llm, t, notes)
     data, _ = llm.call("followup", params, stub=lambda: dict(STUB, facts=dict(STUB["facts"])))
-    warnings = check_output(data)
+    warnings = check_output(data, llm.cfg.get("handbook"))
     return Assessment(data, t, warnings)
 
 

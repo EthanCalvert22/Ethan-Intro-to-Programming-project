@@ -258,7 +258,7 @@ def _collect(cfg, llm, w, state):
             print(f"  {email}: batch item failed ({result.result.type}); run `nsp followup` for it.")
             continue
         a = followup.Assessment(data, ff.get(tid))
-        a.warnings = followup.check_output(a.data)
+        a.warnings = followup.check_output(a.data, cfg.get("handbook"))
         followup.apply(cfg, a, notion=w.get("notion"), close=w.get("close"), write=True)
         print(f"  {email}: {a.verdict} {a.data['score']}/10")
     state.set("pending_batch", None)
