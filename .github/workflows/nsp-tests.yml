@@ -1,4 +1,4 @@
-name: NSP automation tests
+name: Close updater tests
 
 on:
   push:

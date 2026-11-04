@@ -2,94 +2,117 @@ import json
 
 import pytest
 import responses
-from responses import matchers
 
 from nsp.cli import main
-from nsp.close import CloseClient, CloseError, WrongOrgError, plan_from_sentence
+from nsp.close import (CloseClient, CloseError, WrongOrgError, plan_delete_lost_reason,
+                       plan_delete_opportunity, plan_lead_status, plan_move, plan_rename)
 
-from .conftest import pipelines_payload
+from .conftest import FakeClose, lead, opp
 
-API = "https://api.close.com/api/v1"
-
-HARRISON = {"id": "lead_h", "display_name": "Harrison Plumbing", "status_label": "M&A Prospect",
-            "contacts": [{"id": "cont_h", "name": "Tom Harrison", "emails": [{"email": "tom@harrison.example"}]}]}
-OTHER = {"id": "lead_o", "display_name": "Acme", "contacts": [{"id": "c2", "name": "Jane Roe", "emails": []}]}
-
-
-def _pipes(rsps, include_ma=True):
-    rsps.get(f"{API}/pipeline/", json=pipelines_payload(include_ma))
-
-
-@responses.activate
-def test_move_lead_to_stage_by_alias(cfg):
-    _pipes(responses)
-    responses.get(f"{API}/lead/", json={"data": [HARRISON, OTHER]})
-    responses.get(f"{API}/opportunity/", match=[matchers.query_param_matcher({"lead_id": "lead_h", "_limit": "100"})],
-                  json={"data": [{"id": "oppo_1", "status_id": "stat_booked", "status_label": "Call Booked",
-                                  "status_type": "active"}]})
-    put = responses.put(f"{API}/opportunity/oppo_1/", json={"id": "oppo_1"})
-    assert main(["close", "move Harrison to qualified", "--yes"]) == 0
-    assert json.loads(put.calls[0].request.body) == {"status_id": "stat_qual"}
+HARRISON = lead("lead_har", "Harrison Akhavan", "Bad Fit", "stat_bad")
+JONATHAN = lead("lead_jon", "Jonathan (Alpha Fleet)")
+YAQI_PG = lead("lead_ypg", "Yaqi Wang", contacts=[{"name": "Yaqi Wang", "emails": []}])
+YAQI_RS = lead("lead_yrs", "Yaqi Wang", "Info Sent", "stat_x")
+SDR_ONLY = lead("lead_sdr", "Rosie Cruz")
+TWINS = lead("lead_dup", "Dup Co")
+OPPS = {"lead_har": [opp("oppo_har", "stat_qual")], "lead_jon": [opp("oppo_jon", "stat_booked")],
+        "lead_ypg": [opp("oppo_ypg", "stat_qual")], "lead_yrs": [opp("oppo_yrs", "stat_fee")],
+        "lead_sdr": [opp("oppo_sdr", "stat_sdr")],
+        "lead_dup": [opp("oppo_d1", "stat_booked", "2026-10-01"), opp("oppo_d2", "stat_booked", "2026-10-02")]}
+ALL = [HARRISON, JONATHAN, YAQI_PG, YAQI_RS, SDR_ONLY, TWINS]
 
 
-@responses.activate
-def test_wrong_org_is_refused_before_any_write(cfg):
-    _pipes(responses, include_ma=False)
-    client = CloseClient(cfg)
-    with pytest.raises(WrongOrgError):
-        client.set_opportunity_status("oppo_1", "stat_qual")
-    assert all(c.request.method == "GET" for c in responses.calls)
+@pytest.fixture
+def fc():
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+        yield FakeClose(rsps, ALL, OPPS, status_counts={"stat_nsnr": 0, "stat_noshow": 0, "stat_small": 5})
 
 
-@responses.activate
-def test_ambiguous_lead_lists_matches(cfg):
-    _pipes(responses)
-    twin = dict(HARRISON, id="lead_h2", display_name="Harrison Electric")
-    responses.get(f"{API}/lead/", json={"data": [HARRISON, twin]})
-    with pytest.raises(CloseError, match="matches 2 leads"):
-        plan_from_sentence(CloseClient(cfg), "move Harrison to held")
-
-
-@responses.activate
-def test_lead_status_rename_and_unknown_stage(cfg):
-    _pipes(responses)
-    responses.get(f"{API}/lead/", json={"data": [HARRISON]})
-    responses.get(f"{API}/status/lead/", json={"data": [{"id": "stat_int", "label": "Interested"},
-                                                         {"id": "stat_q", "label": "Qualified"}]})
-    put = responses.put(f"{API}/lead/lead_h/", json={})
+def test_move_with_real_labels_and_short_names(cfg, fc):
     c = CloseClient(cfg)
-    plan_from_sentence(c, "mark Harrison as interested").apply()
-    plan_from_sentence(c, "rename Harrison to Harrison Plumbing LLC").apply()
-    assert [json.loads(x.request.body) for x in put.calls] == [{"status_id": "stat_int"},
-                                                               {"name": "Harrison Plumbing LLC"}]
-    responses.get(f"{API}/opportunity/", json={"data": [{"id": "o", "status_id": "stat_booked", "status_type": "active"}]})
-    with pytest.raises(CloseError, match="Unknown M&A pipeline stage"):
-        plan_from_sentence(c, "move Harrison to banana")
+    for name in ("Senior", "senior team call", "Senior Team Call"):
+        assert "'Qualified, Materials Requested' -> 'Senior Team Call'" in plan_move(c, "Harrison Akhavan", name).summary
+    p = plan_move(c, "Harrison Akhavan", "Qualified (Materials Requested)")
+    assert p.noop
+    plan_move(c, "harrison", "No show").run(c)
+    assert json.loads(fc.put_opp.calls[-1].request.body) == {"status_id": "stat_dial"}
+    plan_move(c, "Harrison Akhavan", "Too Small").run(c)
+    assert json.loads(fc.put_opp.calls[-1].request.body) == {"status_id": "stat_small"}
 
 
-@responses.activate
-def test_delete_lost_reason_only_when_unused(cfg):
-    _pipes(responses)
-    responses.get(f"{API}/opportunity/", match=[matchers.query_param_matcher(
-        {"status_id": "stat_dup", "_limit": "1", "_fields": "id"})], json={"data": [], "total_results": 0})
-    responses.get(f"{API}/opportunity/", match=[matchers.query_param_matcher(
-        {"status_id": "stat_small", "_limit": "1", "_fields": "id"})], json={"data": [{"id": "o"}], "total_results": 7})
-    delete = responses.delete(f"{API}/status/opportunity/stat_dup/")
+def test_unknown_stage_lists_options(cfg, fc):
+    with pytest.raises(CloseError, match="Options: Call Booked; Screening Call Held"):
+        plan_move(CloseClient(cfg), "Harrison Akhavan", "Banana")
+
+
+def test_sdr_pipeline_is_never_touched(cfg, fc):
     c = CloseClient(cfg)
-    plan_from_sentence(c, "delete lost reason Duplicate").apply()
-    assert len(delete.calls) == 1
-    with pytest.raises(CloseError, match="used by 7"):
-        plan_from_sentence(c, "delete lost reason Too Small")
-    with pytest.raises(CloseError, match="not a lost reason"):
-        plan_from_sentence(c, "delete stage Call Booked")
+    with pytest.raises(CloseError, match="no opportunity in M&A Opportunities"):
+        plan_move(c, "Rosie Cruz", "Qualified")
+    with pytest.raises(CloseError, match="outside the M&A pipeline"):
+        plan_rename(c, "Rosie Cruz", "New")
+    with pytest.raises(CloseError, match="not an M&A opportunity"):
+        plan_delete_opportunity(c, "Rosie Cruz", "oppo_sdr")
+    assert not fc.writes()
 
 
-@responses.activate
-def test_dry_run_and_already_there(cfg, capsys):
-    _pipes(responses)
-    responses.get(f"{API}/lead/", json={"data": [HARRISON]})
-    responses.get(f"{API}/opportunity/", json={"data": [{"id": "oppo_1", "status_id": "stat_qual",
-                                                         "status_label": "Qualified (Materials Requested)"}]})
-    assert main(["close", "move", "Harrison", "to", "Qualified", "--yes"]) == 0
-    assert "already at" in capsys.readouterr().out
-    assert not [c for c in responses.calls if c.request.method != "GET"]
+def test_wrong_org_refused(cfg):
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+        fc = FakeClose(rsps, ALL, OPPS, include_ma=False)
+        with pytest.raises(WrongOrgError, match="never NSP - VP Sales"):
+            plan_move(CloseClient(cfg), "Harrison Akhavan", "Qualified")
+        assert len(rsps.calls) == 1 and not fc.writes()  # stopped after reading the pipeline list
+
+
+def test_cleanup_status_and_rename(cfg, fc):
+    c = CloseClient(cfg)
+    p = plan_lead_status(c, "Harrison Akhavan", "M&A Prospect")
+    assert p.summary == "Harrison Akhavan: lead status 'Bad Fit' -> 'M&A Prospect'"
+    p.run(c)
+    p = plan_rename(c, "Jonathan (Alpha Fleet)", "Jonathan Wilcox")
+    p.run(c)
+    bodies = [json.loads(x.request.body) for x in fc.put_lead.calls]
+    assert bodies == [{"status_id": "stat_map"}, {"name": "Jonathan Wilcox"}]
+    assert "renamed lead from 'Jonathan (Alpha Fleet)' to 'Jonathan Wilcox'" in json.loads(fc.note.calls[-1].request.body)["note"]
+
+
+def test_delete_opportunity_safety(cfg, fc):
+    c = CloseClient(cfg)
+    with pytest.raises(CloseError, match="matches 2 leads"):  # two Yaqi Wang leads: ambiguous by name
+        plan_delete_opportunity(c, "Yaqi Wang")
+    p = plan_delete_opportunity(c, "lead_ypg")
+    assert "oppo_ypg" in p.summary
+    with pytest.raises(CloseError, match="has 2 M&A opportunities"):
+        plan_delete_opportunity(c, "Dup Co")
+    plan_delete_opportunity(c, "Dup Co", "oppo_d2").run(c)
+    assert fc.del_opp.calls[-1].request.url.endswith("/opportunity/oppo_d2/")
+    assert "deleted M&A opportunity oppo_d2" in json.loads(fc.note.calls[-1].request.body)["note"]
+
+
+def test_won_opportunity_is_protected(cfg):
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+        won = lead("lead_w", "Winner Co")
+        fc = FakeClose(rsps, [won], {"lead_w": [opp("oppo_w", "stat_won")]})
+        with pytest.raises(CloseError, match="won"):
+            plan_delete_opportunity(CloseClient(cfg), "Winner Co")
+        assert not fc.writes()
+
+
+def test_delete_lost_reasons(cfg, fc):
+    c = CloseClient(cfg)
+    plan_delete_lost_reason(c, "Not Selling / Not Ready").run(c)
+    plan_delete_lost_reason(c, "No Show").run(c)  # the lost one, never "No Show: Dial Back"
+    urls = [x.request.url for x in fc.del_status.calls]
+    assert urls[0].endswith("/stat_nsnr/") and urls[1].endswith("/stat_noshow/")
+    with pytest.raises(CloseError, match="used by 5"):
+        plan_delete_lost_reason(c, "Too Small")
+    with pytest.raises(CloseError, match="Unknown lost reason"):
+        plan_delete_lost_reason(c, "Call Booked")
+
+
+def test_cli_move_quick_command(cfg, fc, capsys):
+    assert main(["move", "Harrison Akhavan", "Senior", "--dry-run"]) == 0
+    assert "Dry run" in capsys.readouterr().out and not fc.writes()
+    assert main(["move", "Harrison Akhavan", "Senior", "--yes"]) == 0
+    assert json.loads(fc.put_opp.calls[-1].request.body) == {"status_id": "stat_senior"}
+    assert main(["move", "Nobody Here", "Senior", "--yes"]) == 2

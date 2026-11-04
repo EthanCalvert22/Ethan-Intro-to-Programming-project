@@ -1,0 +1,48 @@
+# Close updater: applies the Notion "Close changes" queue to Close.
+#
+# Starts in DRY RUN: it only writes previews into the Result column.
+# To go live: repo Settings > Secrets and variables > Actions > Variables,
+# add NSP_LIVE = true. Delete it (or set false) to go back to dry run.
+# Scheduled workflows only run from the repository's default branch.
+name: Close updater
+
+on:
+  schedule:
+    - cron: "*/15 6-22 * * 1-5"   # weekdays every 15 min, about 06:00-23:00 Lisbon
+    - cron: "0 8-22/2 * * 0,6"    # weekends every 2 hours
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Run mode"
+        type: choice
+        options: [as configured, dry run]
+        default: as configured
+
+permissions:
+  contents: read
+
+concurrency:
+  group: close-updater
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: nsp-automation
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: nsp-automation/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Apply queued Close changes
+        env:
+          CLOSE_API_KEY: ${{ secrets.CLOSE_API_KEY }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NSP_DRY_RUN: ${{ (vars.NSP_LIVE == 'true' && inputs.mode != 'dry run') && '0' || '1' }}
+        run: python -m nsp run

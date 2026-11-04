@@ -1,56 +1,62 @@
-# Waiting on credentials and decisions
+# Setup checklist
 
-Run `python -m nsp check` at any time to see which credentials are set (it never prints the values).
+Already done: the **Close changes** database in Notion (under To do M&A), two clean-up rows in it (Harrison's status, Jonathan's rename), and the Automation Playbook now tells Cowork to queue Close edits instead of listing them for you.
 
-## Tomorrow: the Claude API key
+## 1. Close API key (5 min)
 
-- [ ] In the Claude Console, create the key and **set a monthly spend limit on it** (suggest $80, which leaves room under your $100).
-- [ ] `export ANTHROPIC_API_KEY=...` (or add it to `nsp-automation/.env`, which git ignores). It is only ever read from the environment.
-- [ ] Run the one test: `python -m nsp ai-selftest`. It makes two small calls (one follow-up on the fictional sample transcript with Opus 5.5, one email classification with Haiku 5.5), writes nothing anywhere, prints the draft and the cost, and ends with PASS or FAIL. Expected cost: about $0.10.
-- [ ] Add the key as GitHub secret `ANTHROPIC_API_KEY`.
+- [ ] In Close, check the org switcher (top left) says **Nassau Street Partners**, not NSP - VP Sales.
+- [ ] Settings (gear icon) → **Developer** → **API Keys** → **+ New API Key**. Name it "Close updater".
+- [ ] Copy it now; Close only shows it once. The key acts as you, so its changes show under your name in Close.
 
-## Other credentials (none of these exist in this environment yet)
+## 2. Notion integration token (5 min)
 
-| Secret | Where to get it | Needed by |
-|---|---|---|
-| `CLOSE_API_KEY` | Close: switch to the **Nassau Street Partners** org first, then Settings, Developer, API Keys. A key from "NSP - VP Sales" is refused automatically (the code checks the M&A pipeline ID exists before any write). | Close helper, booking sync, follow-ups |
-| `CALENDLY_TOKEN` | Calendly: Integrations, API and webhooks, Personal access token | booking sync, brief, overnight |
-| `NOTION_TOKEN` | notion.so/profile/integrations, new internal integration. Then on the **To do M&A** page: ... menu, Connections, add it (sub-pages and the Call Log inherit access). | booking sync, all AI jobs |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Cloud console: new project, enable Gmail API and Drive API, OAuth consent screen type **Internal** (Workspace), Credentials, OAuth client ID, type Desktop app. Internal matters: an External app in "Testing" status has refresh tokens that expire after 7 days. | NDA drafts, filters, sweep |
-| `GOOGLE_REFRESH_TOKEN` | After the two above: `pip install google-auth-oauthlib` then `python -m nsp google-auth`, sign in as ethan.calvert@nassaustreetpartners.com, copy the printed token. Scopes: compose drafts, modify labels, basic settings (filters), read Drive. No send scope is used. | same |
-| `FIREFLIES_API_KEY` | Fireflies: Integrations, Fireflies API | follow-ups, overnight |
+- [ ] Go to notion.so/profile/integrations → **New integration**. Name it "Close updater", pick your workspace, type **Internal**, then save.
+- [ ] Under Capabilities, keep only **Read content** and **Update content**.
+- [ ] Copy the **Internal Integration Secret**.
+- [ ] Open the **Close changes** database → **•••** (top right) → **Connections** → add **Close updater**. Connect only this database: the script needs nothing else.
+- [ ] If Notion says a workspace admin must approve integrations, ask them. It reads and writes only that one database.
 
-## Decisions only you can make
+## 3. Try it on your laptop (5 min)
 
-- [ ] **Which form answers count as "exploring a sale".** The live form asks "What are you looking to do?" with four options. I count *Sell all or most*, *Sell a minority stake or bring in a partner* and *Just exploring options*, and exclude *Raise capital, not sell*. Edit `calendly.qualifying_answers` in `config.toml` if you want it stricter.
-- [ ] **Which NDA file.** Drive search found "NSP NDA Form in Word.docx" (~335KB, in a shared drive), and the "NSP M&A Templates" folder looked empty to me. Your brief says the Word NDA is ~20KB. Put the right file's ID in `gmail.nda_drive_file_id` (or a local path in `gmail.nda_local_path`).
-- [ ] **Referral filter.** Add the other VPs' addresses to the third filter in `config.toml`, or leave it skipped.
-- [ ] **Capital team contact** for template 5 (handover). The model leaves `[colleague]` unless you name someone in the template; the guard rail then flags the bracket.
-- [x] **Handbook figures.** Updated to a $60K to $150K work fee, 6% to 8% success fee, $5M minimum and $10M+ ideal (`[handbook]` in config.toml and `prompts/`).
-- [ ] **Update the Notion pages to match.** The M&A Automation Playbook still says $60K to $100K and $10M, and template 4 on the M&A Email Templates page still says "$10M or more" (the local copy now says $5M). Do not run `nsp sync-prompts` until the Notion templates page is updated, or it will copy the old wording back.
+- [ ] In `nsp-automation/`, copy `.env.example` to `.env` and paste both values. Git ignores `.env`.
+- [ ] Install and check (this prints whether each credential works, never the values):
 
-## Deployment
+```bash
+python -m pip install -r requirements.txt
+```
 
-- [ ] Put this in a **private** repository (or make this one private). It is currently inside the course project repo. No secrets are committed, but config.toml holds internal IDs and the jobs will write logs.
-- [ ] Add the secrets above under Settings, Secrets and variables, Actions.
-- [ ] Merge to the default branch: GitHub only runs scheduled workflows from it. The workflows are `nsp-bookings.yml` (sync every 15 min in working hours), `nsp-jobs.yml` (the Lisbon schedule) and `nsp-tests.yml`.
-- [ ] Minutes: on a private repo the free plan has 2,000 Actions minutes a month. The schedules above use roughly 1,500 to 1,700. On a public repo they are free but the code and run logs are public.
+```bash
+python -m nsp check
+```
 
-## First live runs (in this order, each is safe)
+- [ ] Preview the queue. The Result column of the two clean-up rows should show "DRY RUN: would ...":
 
-1. `python -m nsp close statuses` lists the M&A stages with usage counts, so you can see the two lost reasons you want gone and confirm the stage names match the aliases in `config.toml`.
-2. `python -m nsp sync-bookings --dry-run -v`, then without `--dry-run`.
-3. `python -m nsp gmail-filters --dry-run`, then without.
-4. `python -m nsp nda-draft --to you@yourdomain --body "test" ` and check the draft and attachment in Gmail.
-5. `python -m nsp followup "Carmelita" --dry-run` once Fireflies is connected (proves the Fireflies query works), then `--no-write`, then live.
-6. After the first `python -m nsp brief`, drag the new "Today" toggle heading to the top of the To do M&A page. It is replaced in place from then on.
+```bash
+python -m nsp run --dry-run
+```
 
-## Built but not yet verified against the live services
+- [ ] One-off: delete the two unused lost reasons. Both had no opportunities when I checked on 4 Nov; the script re-checks and refuses if that has changed.
 
-Everything is tested end to end against mocked APIs (25 tests), and the Claude requests are pushed through the real Anthropic SDK to a local fake server. These parts depend on API details I could not check without your credentials:
+```bash
+python -m nsp delete-lost-reason "Not Selling / Not Ready"
+```
 
-- Fireflies GraphQL field names (`transcripts`, `sentences { speaker_name text start_time }`).
-- Close free-text lead search (`GET /lead/?query=`) matching contact emails; the code then double-checks the exact email itself.
-- Notion `2025-09-03` API with the Call Log data source ID.
-- Live Claude output quality on your real transcripts (the self-test proves the plumbing; read the first week of drafts closely).
-- "Earlier intel" history is not kept on lead pages; each run replaces "Latest intel" (Notion page history keeps the old versions).
+```bash
+python -m nsp delete-lost-reason "No Show"
+```
+
+## 4. Free hosting on GitHub Actions (10 min)
+
+- [ ] Make the repository **private** (Settings → General → Danger Zone → Change visibility), or move `nsp-automation/` and `.github/workflows/nsp-*.yml` into a new private repo.
+- [ ] Settings → **Secrets and variables** → **Actions** → **Secrets** → add `CLOSE_API_KEY` and `NOTION_TOKEN`.
+- [ ] Merge this branch into the default branch. GitHub only runs schedules from there.
+- [ ] Actions tab → **Close updater** → **Run workflow**. Check the log and the Result column; it is in dry run.
+- [ ] Go live: Secrets and variables → Actions → **Variables** → add `NSP_LIVE` = `true`. Delete it at any time to go back to dry run.
+
+Cost: free. A private repo gets 2,000 Actions minutes a month; this uses about 1,500 (every 15 minutes, 06:00 to 23:00 Lisbon on weekdays, every 2 hours at weekends). For an urgent change, press Run workflow or use the quick command.
+
+## 5. Decisions for you
+
+- [ ] **Yaqi Wang:** she has two leads, RainSure (Fee and Engagement Review) and PreciGenome (Qualified, Materials Requested). Each has only one M&A opportunity, so the PreciGenome one is not a duplicate on its own lead. If you still want it gone, add a queue row: Lead `lead_VtSSVU0rGTI2tfS1z3sQeS2Q8xNsxqXVEaWQ7AQLwrx`, Action Delete opportunity. If the two leads are really one company, merging them in Close is probably better.
+- [ ] **Stage moves you want to list:** add them as rows, or give them to Claude in chat to queue.
+- [ ] **Playbook figures:** the Automation Playbook still says a $60K to $100K work fee and $10M. You told me the handbook is now $60K to $150K with a $5M minimum. Cowork will quote whatever the playbook says.

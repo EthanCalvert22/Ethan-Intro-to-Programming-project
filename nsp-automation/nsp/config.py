@@ -18,13 +18,7 @@ DEFAULT_CONFIG = ROOT / "config.toml"
 # Every credential the project uses, with what it unlocks. CHECKLIST.md mirrors this.
 SECRETS = {
     "CLOSE_API_KEY": "Close REST API key (Nassau Street Partners org only)",
-    "CALENDLY_TOKEN": "Calendly personal access token",
-    "NOTION_TOKEN": "Notion internal integration secret, shared with the M&A pages",
-    "GOOGLE_CLIENT_ID": "Google OAuth client ID (Desktop app)",
-    "GOOGLE_CLIENT_SECRET": "Google OAuth client secret",
-    "GOOGLE_REFRESH_TOKEN": "Google refresh token from `nsp google-auth`",
-    "FIREFLIES_API_KEY": "Fireflies API key",
-    "ANTHROPIC_API_KEY": "Claude API key (arrives tomorrow)",
+    "NOTION_TOKEN": "Notion internal integration secret, connected to the Close changes database",
 }
 
 
@@ -79,15 +73,3 @@ def load_config(path: Path | str | None = None) -> Config:
     path = Path(path or os.environ.get("NSP_CONFIG") or DEFAULT_CONFIG)
     with open(path, "rb") as fh:
         return Config(tomllib.load(fh))
-
-
-def state_dir() -> Path:
-    d = Path(os.environ.get("NSP_STATE_DIR") or ROOT / "state")
-    d.mkdir(parents=True, exist_ok=True)
-    return d
-
-
-def logs_dir() -> Path:
-    d = Path(os.environ.get("NSP_LOG_DIR") or ROOT / "logs")
-    d.mkdir(parents=True, exist_ok=True)
-    return d

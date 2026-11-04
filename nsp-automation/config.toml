@@ -1,148 +1,42 @@
-# NSP M&A automation: non-secret settings.
-# Secrets (API keys, tokens) are NEVER stored here. They come from environment
-# variables only; see .env.example and CHECKLIST.md.
-#
-# IDs below were read from your live accounts on 2026-11-03.
+# Close updater settings. Secrets (CLOSE_API_KEY, NOTION_TOKEN) are never
+# stored here: they come from environment variables / GitHub secrets only.
+# IDs below were read from your live accounts on 2026-11-04.
 
 timezone = "Europe/Lisbon"
 
 [close]
-# Safety guard: every write first checks that this pipeline exists in the org
-# the API key belongs to. The "NSP - VP Sales" org does not have it, so a key
-# for the wrong org fails before anything is written.
+# Safety: every run first checks that this pipeline exists in the org the API
+# key belongs to. "NSP - VP Sales" does not have it, so a key from that org is
+# refused before anything is read or written.
 pipeline_id = "pipe_0Lvn5aQMMILogzbRSrQWHB"
 pipeline_name = "M&A Opportunities"
-call_booked_status_id = "stat_fVFvumFQv33SUtTvzJIngk7kFmmkyYErFkBS3YcEPnX"
-new_lead_status_id = "stat_JrfTIaF4jcKA1lv5HELiLuQMUprPv8JwJOML1bvZMhW"   # "M&A Prospect"
-# Transcript verdicts may move an opportunity FORWARD automatically
-# (e.g. Call Booked -> Screening Call Held -> Qualified). Lost moves are never
-# automatic: they wait for your "Confirm dead" tick in the Call Log.
-auto_stage_moves = true
+# Lead status and rename changes are only allowed on leads that have an
+# opportunity in the M&A pipeline.
+require_ma_opportunity_for_lead_edits = true
+# Never delete an opportunity in a won stage.
+protect_won = true
+# At most this many queue rows are applied per run (limits any mistake).
+max_changes_per_run = 25
 
-# Short names you can type in the helper ("move Harrison to qualified").
+# Short names you (or Claude) can use for stages. Matching also ignores case,
+# punctuation and the "Lost:" prefix, so "Qualified (Materials Requested)",
+# "qualified materials requested" and "Too Small" all work.
 [close.stage_aliases]
 booked = "Call Booked"
-"call booked" = "Call Booked"
 held = "Screening Call Held"
 screening = "Screening Call Held"
-"call held" = "Screening Call Held"
-qualified = "Qualified (Materials Requested)"
-materials = "Qualified (Materials Requested)"
+qualified = "Qualified, Materials Requested"
+materials = "Qualified, Materials Requested"
 diligence = "Soft Diligence"
-"soft diligence" = "Soft Diligence"
 senior = "Senior Team Call"
 "senior team" = "Senior Team Call"
 fee = "Fee and Engagement Review"
 "fee review" = "Fee and Engagement Review"
 engagement = "Engagement Sent"
-"engagement sent" = "Engagement Sent"
 signed = "Engagement Signed"
 won = "Engagement Signed"
-"not a fit" = "Not a Fit"
-dq = "Not a Fit"
-"cant afford" = "Can't Afford Work Fee"
-"too small" = "Too Small"
-
-# Handbook figures (Nov 2026). The email guard rail and the prompts use these.
-[handbook]
-min_sale_value_musd = 5      # bare minimum
-ideal_sale_value_musd = 10   # ideal
-work_fee_k = [60, 150]
-success_fee_pct = [6, 8]
-
-[calendly]
-user_uri = "https://api.calendly.com/users/f1ae8411-c862-443d-833e-96d86d50e844"
-event_type_names = ["M&A Advisory Meeting", "M&A Advisory Meeting (S)"]
-min_duration_minutes = 30
-intent_question = "What are you looking to do?"
-# DECISION FOR YOU (see CHECKLIST.md): which answers count as "exploring a sale".
-# "Raise capital, not sell" is excluded because capital raises are out of scope.
-qualifying_answers = [
-  "Sell all or most of the business",
-  "Sell a minority stake or bring in a partner",
-  "Just exploring options",
-]
-lookback_hours = 48
-lookahead_days = 60
+"no show" = "No Show: Dial Back"
+"dial back" = "No Show: Dial Back"
 
 [notion]
-call_log_data_source_id = "ee728d44-9d98-4050-8afc-8b1d827aa059"
-todo_page_id = "400d282c-b7d4-8019-979e-cb67544ed9b9"
-playbook_page_id = "40cd282c-b7d4-8180-b3b1-ea0aa1dc911e"
-templates_page_id = "40cd282c-b7d4-8139-a216-ea369e264bc4"
-
-[gmail]
-# Mutual NDA (Word). Set ONE of these. Drive file wins if both are set.
-# Found in Drive: "NSP NDA Form in Word.docx" (id 130pnk-r2WoIglIuewH0yI6Q0ubZH2s-B,
-# ~335KB, shared drive). Your brief says ~20KB, so confirm it is the right file.
-nda_drive_file_id = ""
-nda_local_path = ""
-nda_attachment_name = "Nassau Street Partners - Mutual NDA.docx"
-sender_name = "Ethan Calvert"
-
-[gmail.labels]
-bookings = "M&A/1 Bookings"
-reply_owed = "M&A/2 Reply owed"
-waiting = "M&A/3 Waiting on them"
-nda_signed = "M&A/4 NDA signed"
-dead = "M&A/5 Dead"
-deals_parent = "M&A Deals"
-referrals = "M&A Referrals"
-
-# One-off Gmail filters created by `nsp gmail-filters`. Edit freely; the command
-# is idempotent and skips filters that already exist.
-[[gmail.filters]]
-name = "Calendly M&A bookings, reschedules and cancellations"
-from = "notifications@calendly.com"
-subject = "\"M&A Advisory Meeting\""
-add_labels = ["M&A/1 Bookings"]
-never_spam = true
-
-[[gmail.filters]]
-name = "Signed NDAs or materials coming back"
-query = "has:attachment (NDA OR \"non-disclosure\" OR \"mutual nda\") -from:me"
-add_labels = ["M&A/2 Reply owed"]
-mark_important = true
-never_spam = true
-
-[[gmail.filters]]
-name = "Leads forwarded by other NSP VPs"
-# Fill in colleagues' addresses, e.g. from = "alice@nassaustreetpartners.com OR bob@nassaustreetpartners.com"
-from = ""
-subject = "Fwd"
-add_labels = ["M&A Referrals"]
-never_spam = true
-
-[ai]
-# Stronger model: transcripts, follow-up drafts, morning brief, deal intel.
-strong_model = "claude-opus-5-5"
-strong_effort = "medium"
-# Cheap, fast model: inbox sorting.
-fast_model = "claude-haiku-5-5"
-fast_effort = "low"
-# Soft budget. Jobs refuse to start once logged spend this month reaches it.
-# Also set a hard spend limit on the key in the Claude Console.
-monthly_budget_usd = 60
-intel_max_searches_per_deal = 5
-
-# USD per million tokens (first-party API list prices, Nov 2026).
-[ai.pricing."claude-opus-5-5"]
-input = 4.0
-output = 20.0
-cache_write = 5.0
-cache_read = 0.20
-
-[ai.pricing."claude-sonnet-5-5"]
-input = 2.0
-output = 10.0
-cache_write = 2.5
-cache_read = 0.20
-
-[ai.pricing."claude-haiku-5-5"]
-input = 0.10
-output = 0.50
-cache_write = 0.125
-cache_read = 0.01
-
-[ai.pricing.web_search]
-per_search = 0.01
+close_changes_data_source_id = "cb971d35-aeb8-4182-82cd-642ce0c47fbd"

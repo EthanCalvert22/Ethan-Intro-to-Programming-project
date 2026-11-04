@@ -1,22 +1,20 @@
 [project]
 name = "nsp-automation"
 version = "0.1.0"
-description = "NSP M&A pipeline automation: Close helper, Calendly sync, Gmail drafts and Claude jobs"
+description = "Close updater for the NSP M&A pipeline (Notion queue -> Close REST API)"
 requires-python = ">=3.11"
 dependencies = [
   "requests>=2.31,<3",
-  "anthropic>=2.4,<3",
 ]
 
 [project.optional-dependencies]
-setup = ["google-auth-oauthlib>=1.2,<2"]
 test = ["pytest>=8", "responses>=0.25"]
 
 [project.scripts]
 nsp = "nsp.cli:main"
 
 [tool.setuptools]
-packages = ["nsp", "nsp.ai"]
+packages = ["nsp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
