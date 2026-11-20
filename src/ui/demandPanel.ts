@@ -43,7 +43,7 @@ export function renderDemandPanel(): HTMLElement {
       ),
     ),
     el("p", { class: "hint" }, [
-      "You sell the smaller of: customers who want it, or what is on your shelf. Prices are compared to the exact cent, and nothing is random. Leftover stock waits on the shelf for tomorrow.",
+      "Campus events then scale these numbers for the items they affect, from half to one and a half times: check the campus news. You sell the smaller of: customers who want it, or what is on your shelf. Prices are compared to the exact cent, and leftover stock waits on the shelf for tomorrow.",
     ]),
   ]);
 }

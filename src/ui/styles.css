@@ -331,6 +331,82 @@ p {
   color: #f6c38f;
 }
 
+/* Campus news: today's and tomorrow's events */
+
+.campus-news {
+  margin-bottom: 1rem;
+}
+
+.campus-news h2 {
+  font-size: 1.15rem;
+}
+
+.news-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.news-card {
+  background: var(--surface);
+  border-radius: var(--radius-small);
+  box-shadow: var(--shadow);
+  padding: 0.75rem 1rem;
+  border-left: 6px solid var(--line);
+  display: grid;
+  gap: 0.25rem;
+  align-content: start;
+}
+
+.news-special {
+  border-left-color: var(--terracotta);
+}
+
+.news-when {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.news-name {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.news-headline {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.news-chips {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.news-chip {
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+}
+
+.news-up {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.news-down {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 /* Messages */
 
 .next-step {
@@ -722,6 +798,12 @@ p {
   font-size: 1rem;
 }
 
+.receipt-event {
+  text-align: center;
+  font-style: italic;
+  margin: -0.25rem 0 0.5rem;
+}
+
 .receipt-thanks {
   text-align: center;
   margin: 0.75rem 0 0;
@@ -794,6 +876,20 @@ p {
 
 .dialog::backdrop {
   background: rgb(29 22 18 / 0.55);
+}
+
+.dialog-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.dialog-option input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.15rem;
+  flex: none;
+  accent-color: var(--terracotta);
 }
 
 .dialog-actions {
