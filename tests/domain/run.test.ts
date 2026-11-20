@@ -41,12 +41,13 @@ describe("newRun (CT01 starting state)", () => {
   it("starts on day 1 with €100, an empty shelf and reference prices", () => {
     const run = newRun(cafe);
     expect(run).toEqual({
-      version: 1,
+      version: 2,
       status: "in_progress",
       currentDay: 1,
       cashCents: STARTING_CASH_CENTS,
       stock: { "flat-white": 0, toastie: 0, brownie: 0 },
       prices: { "flat-white": 280, toastie: 450, brownie: 180 },
+      events: ["ordinary-day", "ordinary-day", "ordinary-day", "ordinary-day", "ordinary-day"],
       history: [],
     });
     expect(STARTING_CASH_CENTS).toBe(10000);

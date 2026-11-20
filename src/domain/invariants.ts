@@ -1,5 +1,5 @@
 import type { Catalogue, Product } from "./catalogue";
-import { demand } from "./demand";
+import { demandOnDay, effectPercent, findEvent, type CampusEvent } from "./events";
 import { MAX_PRICE_CENTS, RUN_LENGTH_DAYS } from "./rules";
 import type { DayLine, DayResult, Run, Shelf } from "./run";
 
@@ -31,14 +31,19 @@ function checkShelf(shelf: Shelf, catalogue: Catalogue, what: string): string | 
   return checkEveryProductListed(shelf, catalogue, what, (units) => isWholeAtLeast(units, 0));
 }
 
-function checkLine(line: DayLine, product: Product): string | null {
+function checkLine(line: DayLine, product: Product, event: CampusEvent): string | null {
   if (line.productId !== product.id) {
     return `a receipt line is for the wrong product.`;
   }
   if (!isWholeAtLeast(line.priceCents, 1)) {
     return `the price of ${product.name} is not valid.`;
   }
-  if (line.demand !== demand(line.priceCents, product.referencePriceCents)) {
+  const expectedDemand = demandOnDay(
+    line.priceCents,
+    product.referencePriceCents,
+    effectPercent(event, product.id),
+  );
+  if (line.demand !== expectedDemand) {
     return `the demand for ${product.name} does not follow the rule.`;
   }
   if (!isWholeAtLeast(line.unitsSold, 0) || line.unitsSold > line.demand) {
@@ -67,16 +72,21 @@ function checkTotals(day: DayResult): string | null {
   return matches ? null : "the totals do not match the lines.";
 }
 
-function checkDay(day: DayResult, position: number, catalogue: Catalogue): string | null {
+function checkDay(day: DayResult, position: number, run: Run, catalogue: Catalogue): string | null {
   const label = `Day ${position + 1}`;
   if (day.day !== position + 1) {
     return `${label} is recorded out of order.`;
+  }
+  // checkEvents has already made sure every planned event exists.
+  const event = findEvent(day.eventId);
+  if (event === undefined || day.eventId !== run.events[position]) {
+    return `${label} does not match the event planned for that day.`;
   }
   if (day.lines.length !== catalogue.length) {
     return `${label} does not have one line per product.`;
   }
   for (const [index, product] of catalogue.entries()) {
-    const problem = checkLine(day.lines[index] as DayLine, product);
+    const problem = checkLine(day.lines[index] as DayLine, product, event);
     if (problem !== null) {
       return `${label}: ${problem}`;
     }
@@ -111,6 +121,14 @@ function checkProgress(run: Run): string | null {
     : "The history does not match the current day.";
 }
 
+function checkEvents(run: Run): string | null {
+  if (run.events.length !== RUN_LENGTH_DAYS) {
+    return `The run must plan an event for each of the ${RUN_LENGTH_DAYS} days.`;
+  }
+  const unknown = run.events.find((eventId) => findEvent(eventId) === undefined);
+  return unknown === undefined ? null : `The event "${unknown}" is not recognised.`;
+}
+
 /** Returns the first broken promise in a run, or null if the run is sound. */
 export function findRunProblem(run: Run, catalogue: Catalogue): string | null {
   if (!isWholeAtLeast(run.cashCents, 0)) {
@@ -118,6 +136,7 @@ export function findRunProblem(run: Run, catalogue: Catalogue): string | null {
   }
   const problem =
     checkProgress(run) ??
+    checkEvents(run) ??
     checkShelf(run.stock, catalogue, "Stock") ??
     checkEveryProductListed(
       run.prices,
@@ -129,7 +148,7 @@ export function findRunProblem(run: Run, catalogue: Catalogue): string | null {
     return problem;
   }
   for (const [position, day] of run.history.entries()) {
-    const dayProblem = checkDay(day, position, catalogue);
+    const dayProblem = checkDay(day, position, run, catalogue);
     if (dayProblem !== null) {
       return dayProblem;
     }

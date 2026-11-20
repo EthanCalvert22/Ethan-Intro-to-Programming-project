@@ -1,5 +1,12 @@
 import { findProduct, type Catalogue, type Product } from "./catalogue";
-import { demand } from "./demand";
+import {
+  CLASSIC_WEEK,
+  demandOnDay,
+  effectPercent,
+  findEvent,
+  ORDINARY_DAY,
+  type CampusEvent,
+} from "./events";
 import {
   invalidPrice,
   invalidQuantity,
@@ -49,6 +56,8 @@ export interface DayTotals {
 /** One completed trading day: the till receipt plus the balances right after it. */
 export interface DayResult {
   readonly day: number;
+  /** The campus event that was on that day. */
+  readonly eventId: string;
   readonly lines: readonly DayLine[];
   readonly totals: DayTotals;
   readonly cashAfterCents: number;
@@ -66,6 +75,8 @@ export interface Run {
   readonly cashCents: number;
   readonly stock: Shelf;
   readonly prices: PriceList;
+  /** The campus event for each of the five days, chosen when the run starts. */
+  readonly events: readonly string[];
   readonly history: readonly DayResult[];
 }
 
@@ -75,8 +86,11 @@ export interface FinalSummary {
   readonly gainLossCents: number;
 }
 
-/** A fresh run: €100, an empty shelf, day 1, and every price at its reference price. */
-export function newRun(catalogue: Catalogue): Run {
+/**
+ * A fresh run: €100, an empty shelf, day 1, and every price at its reference price.
+ * Without a week of events it is the classic week: five ordinary days, the original rules.
+ */
+export function newRun(catalogue: Catalogue, events: readonly string[] = CLASSIC_WEEK): Run {
   return {
     version: RUN_FORMAT_VERSION,
     status: "in_progress",
@@ -86,6 +100,7 @@ export function newRun(catalogue: Catalogue): Run {
     prices: Object.fromEntries(
       catalogue.map((product) => [product.id, product.referencePriceCents]),
     ),
+    events: [...events],
     history: [],
   };
 }
@@ -96,6 +111,12 @@ export function stockOf(run: Run, productId: string): number {
 
 export function priceOf(run: Run, product: Product): number {
   return run.prices[product.id] ?? product.referencePriceCents;
+}
+
+/** The campus event on a day of this run (an ordinary day if the run has none for it). */
+export function eventFor(run: Run, day: number): CampusEvent {
+  const eventId = run.events[day - 1];
+  return (eventId === undefined ? undefined : findEvent(eventId)) ?? ORDINARY_DAY;
 }
 
 export function daysCompleted(run: Run): number {
@@ -165,10 +186,14 @@ export function setPrice(
   return accept({ ...run, prices: { ...run.prices, [productId]: priceCents } });
 }
 
-/** What one product does today: sales are capped by stock (CT R2). */
-function tradeLine(run: Run, product: Product): DayLine {
+/** What one product does today: the event scales demand, and sales are capped by stock (CT R2). */
+function tradeLine(run: Run, product: Product, event: CampusEvent): DayLine {
   const priceCents = priceOf(run, product);
-  const wanted = demand(priceCents, product.referencePriceCents);
+  const wanted = demandOnDay(
+    priceCents,
+    product.referencePriceCents,
+    effectPercent(event, product.id),
+  );
   const unitsSold = Math.min(wanted, stockOf(run, product.id));
   const revenueCents = unitsSold * priceCents;
   // The stock was paid for when it was bought; COGS is reported, not taken from cash again (CT R4).
@@ -204,7 +229,8 @@ export function tradeDay(run: Run, catalogue: Catalogue): Outcome<Run> {
   if (isComplete(run)) {
     return refuse(runCompleted());
   }
-  const lines = catalogue.map((product) => tradeLine(run, product));
+  const event = eventFor(run, run.currentDay);
+  const lines = catalogue.map((product) => tradeLine(run, product, event));
   const totals = addUp(lines);
   const cashAfterCents = run.cashCents + totals.revenueCents;
   const stockAfter: Shelf = Object.fromEntries(
@@ -212,6 +238,7 @@ export function tradeDay(run: Run, catalogue: Catalogue): Outcome<Run> {
   );
   const record: DayResult = {
     day: run.currentDay,
+    eventId: event.id,
     lines,
     totals,
     cashAfterCents,
