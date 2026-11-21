@@ -857,3 +857,73 @@ describe("high scores", () => {
     expect(formatScoreDate("2027-01-05")).toBe("5 Jan 2027");
   });
 });
+
+describe("results dashboard", () => {
+  const figureText = (id: string) => testId(id);
+  const bars = () => [...root.querySelectorAll<SVGGElement>(".profit-chart .chart-bar")];
+
+  it("explains itself before the first day", () => {
+    start();
+    expect(text(".dashboard-empty")).toContain("Open for your first day");
+    expect(root.querySelector(".profit-chart")).toBeNull();
+  });
+
+  it("shows profit by day, the best seller and best day, and a result that matches the final card", () => {
+    start();
+    buy("toastie", 12);
+    buy("brownie", 15);
+    openButton().click();
+    setPrice("brownie", "1.00");
+    openButton().click();
+    // Day 1: 10 toasties (+€25.00) and 10 brownies (+€11.00). Day 2: 2 toasties (+€5.00)
+    // and 5 brownies at €1.00 (+€1.50): €36.00 and €6.50.
+    expect(figureText("week-profit")).toBe("+€42.50");
+    expect(figureText("week-upgrades")).toBe("€0.00");
+    expect(figureText("week-result")).toBe("+€42.50");
+    expect(figureText("week-best-seller")).toBe("Brownie · 15 sold");
+    expect(figureText("week-best-day")).toBe("Day 1 · +€36.00");
+    expect(bars()).toHaveLength(2);
+    expect(bars()[0]?.querySelector(".chart-value")?.textContent).toBe("+€36.00");
+    expect(bars()[0]?.querySelector("title")?.textContent).toBe("Day 1: gross profit +€36.00");
+    expect(root.querySelectorAll(".profit-chart .chart-future")).toHaveLength(3);
+    const tableRows = root.querySelectorAll(".chart-figure table tbody tr");
+    expect(tableRows).toHaveLength(2);
+    expect(tableRows[1]?.textContent).toContain("+€6.50");
+    // Finish the run: the dashboard's result equals the Final results card.
+    openButton().click();
+    openButton().click();
+    openButton().click();
+    expect(text(".final-amount")).toBe(figureText("week-result"));
+  });
+
+  it("draws a loss below the zero line in its own colour, with its sign", () => {
+    start();
+    buy("toastie", 10);
+    setPrice("toastie", "1.00");
+    openButton().click();
+    const loss = bars()[0];
+    expect(loss?.querySelector("path")?.getAttribute("class")).toBe("chart-loss");
+    expect(loss?.querySelector(".chart-value")?.textContent).toBe("-€10.00");
+    expect(figureText("week-result")).toBe("-€10.00");
+    expect($('[data-testid="week-result"]').className).toBe("figure-loss");
+  });
+
+  it("subtracts upgrade spending from the result so far", () => {
+    start();
+    button(/^Buy Student Loyalty Program/).click();
+    buy("toastie", 12);
+    openButton().click();
+    expect(figureText("week-profit")).toBe("+€30.00");
+    expect(figureText("week-upgrades")).toBe("€15.00");
+    expect(figureText("week-result")).toBe("+€15.00");
+  });
+
+  it("says nothing has sold after a day with an empty shelf", () => {
+    start();
+    openButton().click();
+    expect(figureText("week-best-seller")).toBe("Nothing sold yet");
+    expect(figureText("week-best-day")).toBe("Day 1 · €0.00");
+    expect(bars()[0]?.querySelector("path")).toBeNull();
+    expect($('[data-testid="week-result"]').className).toBe("");
+  });
+});

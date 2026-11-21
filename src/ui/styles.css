@@ -28,6 +28,9 @@
   --paper: #fffdf8;
   --paper-ink: #2c2420;
   --shadow: 0 1px 2px rgb(74 42 23 / 0.08), 0 8px 24px rgb(74 42 23 / 0.1);
+  /* Chart colours, checked for colour-blind separation and contrast on the panel. */
+  --chart-gain: #1d6aa5;
+  --chart-loss: #b4512c;
   --radius: 18px;
   --radius-small: 12px;
   --font-heading:
@@ -64,6 +67,8 @@
     --paper: #f4ecdf;
     --paper-ink: #2c2420;
     --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+    --chart-gain: #3f97d8;
+    --chart-loss: #d4703f;
   }
 }
 
@@ -844,6 +849,104 @@ p {
   text-align: center;
   margin: 0.75rem 0 0;
   font-style: italic;
+}
+
+/* Results dashboard */
+
+.main-column {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+  min-width: 0;
+}
+
+.dashboard-empty {
+  color: var(--ink-soft);
+}
+
+.week-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+}
+
+.week-figures div {
+  background: var(--surface-sunk);
+  border-radius: var(--radius-small);
+  padding: 0.5rem 0.75rem;
+  min-width: 0;
+}
+
+.week-figures dt {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.week-figures dd {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.no-break {
+  white-space: nowrap;
+}
+
+.figure-gain {
+  color: var(--success);
+}
+
+.figure-loss {
+  color: var(--danger);
+}
+
+.chart-figure {
+  margin: 0;
+}
+
+.chart-figure figcaption {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.profit-chart {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+}
+
+.chart-zero {
+  stroke: var(--line);
+  stroke-width: 1.5;
+}
+
+.chart-gain {
+  fill: var(--chart-gain);
+}
+
+.chart-loss {
+  fill: var(--chart-loss);
+}
+
+.chart-value,
+.chart-day {
+  font-family: var(--font-body);
+  font-size: 11px;
+  fill: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-value {
+  fill: var(--ink);
+  font-weight: 600;
+}
+
+.chart-future rect {
+  fill: var(--line);
 }
 
 /* High scores */
