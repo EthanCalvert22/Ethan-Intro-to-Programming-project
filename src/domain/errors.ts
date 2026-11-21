@@ -37,6 +37,20 @@ export function unknownProduct(productId: string): ShopError {
   };
 }
 
+export function unknownUpgrade(upgradeId: string): ShopError {
+  return {
+    kind: "UnknownUpgrade",
+    message: `I couldn't find the "${upgradeId}" upgrade in the shop.`,
+  };
+}
+
+export function upgradeAlreadyBought(upgradeName: string): ShopError {
+  return {
+    kind: "UpgradeAlreadyPurchased",
+    message: `You already bought ${upgradeName} this run. Each upgrade can be bought once.`,
+  };
+}
+
 export const quantityProblems = {
   missing: "Please tell me how many to order, like 5.",
   notWhole: "I can only order whole items, so please use a whole number like 5.",

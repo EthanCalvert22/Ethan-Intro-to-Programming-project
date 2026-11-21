@@ -1,10 +1,10 @@
 import type { Product } from "../domain/catalogue";
-import { demand, demandForDay } from "../domain/demand";
+import { ORDINARY_DAY } from "../domain/events";
 import { parsePriceText, parseQuantityText } from "../domain/input";
 import { formatEuros, formatPriceForInput } from "../domain/money";
 import { MAX_ORDER_QUANTITY, MAX_PRICE_CENTS } from "../domain/rules";
-import { isComplete, priceOf, stockOf, type Run } from "../domain/run";
-import { orderUnitCost } from "../domain/upgrades";
+import { customersFor, eventFor, isComplete, priceOf, stockOf, type Run } from "../domain/run";
+import { activeUpgrades, hasSupplierDiscount, orderUnitCost } from "../domain/upgrades";
 import { el, srOnly, svgFromMarkup } from "./dom";
 import { productIcon } from "./icons";
 
@@ -40,8 +40,8 @@ export class ShelfCard {
   readonly element: HTMLElement;
   private run: Run;
   private priceDraftActive = false;
-
   private readonly productFacts = el("p", { class: "product-facts" });
+
   private readonly stockValue: HTMLElement;
   private readonly quantityInput: HTMLInputElement;
   private readonly quantityLess: HTMLButtonElement;
@@ -139,7 +139,7 @@ export class ShelfCard {
         orderForm,
         priceForm,
         el("p", { class: "hint tier-note" }, [
-          `Above ${formatEuros(product.referencePriceCents)} base demand is 5; above ${twiceReference} it is 0.`,
+          `On an ordinary day: above ${formatEuros(product.referencePriceCents)} only 5 customers come; above ${twiceReference} nobody does.`,
         ]),
       ],
     );
@@ -180,8 +180,10 @@ export class ShelfCard {
   /** Redraws the card from the saved run. A price the player is still typing is left alone. */
   update(run: Run): void {
     this.run = run;
-    const unitCost = orderUnitCost(run, this.product.unitCostCents);
-    this.productFacts.textContent = `Costs you ${formatEuros(unitCost)} · Fair price ${formatEuros(this.product.referencePriceCents)}`;
+    // With the Supplier Partnership, new orders cost the supplier rate.
+    const unitCost = formatEuros(orderUnitCost(run, this.product.unitCostCents));
+    const rate = hasSupplierDiscount(run) ? " (supplier rate)" : "";
+    this.productFacts.textContent = `Costs you ${unitCost}${rate} · Fair price ${formatEuros(this.product.referencePriceCents)}`;
     this.stockValue.textContent = String(stockOf(run, this.product.id));
     if (!this.priceDraftActive) {
       this.priceInput.value = formatPriceForInput(priceOf(run, this.product));
@@ -277,16 +279,22 @@ export class ShelfCard {
     } else if (!parsed.ok) {
       this.priceHint.textContent = parsed.error.message;
     } else {
-      const base = demand(parsed.value, this.product.referencePriceCents);
-      const today = demandForDay(
-        this.run,
-        this.run.currentDay,
-        parsed.value,
-        this.product.referencePriceCents,
-      );
-      const when = today === base ? "each day" : `on day ${this.run.currentDay} with upgrades`;
+      const day = this.run.currentDay;
+      const count = customersFor(this.run, this.product, parsed.value, day);
+      const event = eventFor(this.run, day);
+      // Name whatever changes today's number: the campus event, and any upgrade bonus.
+      const reasons = [
+        ...(event.id === ORDINARY_DAY.id ? [] : [event.name]),
+        ...(count === 0
+          ? []
+          : activeUpgrades(this.run, day)
+              .filter((upgrade) => upgrade.demandBonus > 0)
+              .map((upgrade) => `${upgrade.name} +${upgrade.demandBonus}`)),
+      ];
+      const wanted = customers(count);
+      const because = reasons.length === 0 ? "" : ` (${reasons.join(", ")})`;
       const pending = parsed.value === saved ? "" : " Press Set price or Enter to use it.";
-      this.priceHint.textContent = `At ${formatEuros(parsed.value)}, ${customers(today)} will want one ${when}.${pending}`;
+      this.priceHint.textContent = `At ${formatEuros(parsed.value)}, ${wanted} will want one today${because}.${pending}`;
     }
   }
 

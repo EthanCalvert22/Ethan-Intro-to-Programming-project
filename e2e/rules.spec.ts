@@ -24,6 +24,7 @@ test("bad quantities are refused with a friendly message and the Buy button disa
   page,
 }) => {
   await freshStart(page);
+  const savedBefore = await page.evaluate((key) => localStorage.getItem(key), RUN_KEY);
   const brownie = card(page, "Brownie");
   const quantity = brownie.getByLabel("How many to order");
   const cases: [string, string][] = [
@@ -39,7 +40,7 @@ test("bad quantities are refused with a friendly message and the Buy button disa
     await expect(brownie.getByRole("button", { name: "Buy Brownie" })).toBeDisabled();
     await expect(quantity).toHaveAttribute("aria-invalid", "true");
   }
-  expect(await page.evaluate((key) => localStorage.getItem(key), RUN_KEY)).toBeNull();
+  expect(await page.evaluate((key) => localStorage.getItem(key), RUN_KEY)).toBe(savedBefore);
 });
 
 test("A2: prices are checked, and an invalid price blocks trading until fixed", async ({
@@ -59,7 +60,7 @@ test("A2: prices are checked, and an invalid price blocks trading until fixed", 
   await expect(toastie.getByRole("button", { name: "Set price for Toastie" })).toBeDisabled();
 
   await price.fill("4,51");
-  await expect(toastie).toContainText("At €4.51, 5 customers will want one each day.");
+  await expect(toastie).toContainText("At €4.51, 5 customers will want one today.");
   await price.press("Enter");
   await expect(page.getByTestId("message")).toHaveText("Toastie now sells for €4.51.");
   await expect(price).toHaveValue("4.51");

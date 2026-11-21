@@ -5,7 +5,11 @@ Things that are true of this first release, on purpose or by necessity. None of 
 ## By design (out of scope for the first release)
 
 - **One café, one player, one browser.** Progress is saved in the browser's `localStorage`, so it does not follow you to another browser or device, and clearing site data deletes it.
-- **Fixed menu and fixed demand.** No random events, upgrades, competitors, running costs, spoilage, loans or returns, exactly as the brief's scope boundaries say.
+- **Fixed menu.** No upgrades, competitors, running costs, spoilage, loans or returns. Campus events (version 2) are the one extension so far.
+- **Campus events only know the café's items.** Each event names product ids from the Brew & Byte menu; a different menu would need its own events.
+- **The save key still ends in `v1`.** The saved data inside is now version 2. The key was kept on purpose so existing saves are found and upgraded rather than lost.
+- **High scores live in this browser only**, like the run. Another browser or device has its own board.
+- **If a high score can't be saved** (for example, storage is full), that run is not added later: scores are only recorded at the moment a run finishes. The final card says so.
 - **No undo** for purchases or price changes. Refused actions change nothing, but accepted ones are final (as in a real till).
 
 ## Behaviour worth knowing

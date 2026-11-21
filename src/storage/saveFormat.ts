@@ -1,4 +1,5 @@
 import type { Catalogue } from "../domain/catalogue";
+import { CLASSIC_WEEK, ORDINARY_DAY } from "../domain/events";
 import { findRunProblem } from "../domain/invariants";
 import { RUN_FORMAT_VERSION } from "../domain/rules";
 import type { DayLine, DayResult, DayTotals, Run, Shelf } from "../domain/run";
@@ -38,6 +39,13 @@ function asList(value: unknown, what: string): readonly unknown[] {
   return value;
 }
 
+function asText(value: unknown, what: string): string {
+  if (typeof value !== "string") {
+    throw new SaveShapeError(`${what} is not in the expected format.`);
+  }
+  return value;
+}
+
 function asNumberMap(value: unknown, what: string): Shelf {
   const fields = asFields(value, what);
   return Object.fromEntries(
@@ -52,9 +60,7 @@ function decodeLine(value: unknown, what: string): DayLine {
   }
   return {
     productId: fields.productId,
-    ...(fields.discountedUnitsSold !== undefined && {
-      discountedUnitsSold: asNumber(fields.discountedUnitsSold, `${what} discounted units sold`),
-    }),
+    discountedUnitsSold: asNumber(fields.discountedUnitsSold, `${what} discounted units`),
     priceCents: asNumber(fields.priceCents, `${what} price`),
     demand: asNumber(fields.demand, `${what} demand`),
     unitsSold: asNumber(fields.unitsSold, `${what} units sold`),
@@ -79,6 +85,7 @@ function decodeDay(value: unknown, position: number): DayResult {
   const fields = asFields(value, what);
   return {
     day: asNumber(fields.day, `${what} number`),
+    eventId: asText(fields.eventId, `${what} event`),
     lines: asList(fields.lines, `${what} lines`).map((line, index) =>
       decodeLine(line, `${what}, line ${index + 1}`),
     ),
@@ -88,54 +95,86 @@ function decodeDay(value: unknown, position: number): DayResult {
   };
 }
 
-function decodePurchasedUpgrades(value: unknown): readonly string[] {
-  if (value === undefined) {
-    return [];
-  }
-  return asList(value, "Purchased upgrades").map((id) => {
-    if (typeof id !== "string") {
-      throw new SaveShapeError("A purchased upgrade has no valid ID.");
-    }
-    return id;
-  });
+function decodeUpgradeIds(value: unknown): readonly string[] {
+  return asList(value, "The bought upgrades").map((id, index) =>
+    asText(id, `Bought upgrade ${index + 1}`),
+  );
 }
 
 function decodeRun(fields: Fields): Run {
   if (fields.status !== "in_progress" && fields.status !== "completed") {
     throw new SaveShapeError("The run status is not recognised.");
   }
-  const currentDay = asNumber(fields.currentDay, "The current day");
-  const purchasedUpgrades = decodePurchasedUpgrades(fields.purchasedUpgrades);
-  // Old saves recorded the payment but did not record a day or apply any bonus.
-  // Start those bonuses on the next unplayed day, leaving all old receipts intact.
-  const upgradePurchaseDays =
-    fields.upgradePurchaseDays !== undefined
-      ? asNumberMap(fields.upgradePurchaseDays, "Upgrade purchase days")
-      : purchasedUpgrades.length > 0 && fields.status === "in_progress"
-        ? Object.fromEntries(purchasedUpgrades.map((id) => [id, currentDay]))
-        : undefined;
   return {
     version: RUN_FORMAT_VERSION,
     status: fields.status,
-    currentDay,
+    currentDay: asNumber(fields.currentDay, "The current day"),
     cashCents: asNumber(fields.cashCents, "Cash"),
     stock: asNumberMap(fields.stock, "Stock"),
-    ...(fields.discountedStock !== undefined && {
-      discountedStock: asNumberMap(fields.discountedStock, "Discounted stock"),
-    }),
+    discountedStock: asNumberMap(fields.discountedStock, "Discounted stock"),
     prices: asNumberMap(fields.prices, "Prices"),
+    events: asList(fields.events, "The planned events").map((eventId, index) =>
+      asText(eventId, `The event for day ${index + 1}`),
+    ),
     history: asList(fields.history, "The history").map(decodeDay),
-    purchasedUpgrades,
-    ...(upgradePurchaseDays === undefined ? {} : { upgradePurchaseDays }),
+    purchasedUpgrades: decodeUpgradeIds(fields.purchasedUpgrades),
+    upgradePurchaseDays: asNumberMap(fields.upgradePurchaseDays, "Upgrade purchase days"),
   };
 }
 
 /**
- * Brings older save formats up to date. Version 1 is the only format so far; a future
- * version 2 would add a step here that turns a version 1 save into a version 2 save.
+ * Version 1 saves come from before campus events existed. They become version 2 by
+ * planning five ordinary days and marking every recorded day as ordinary, which is
+ * exactly how those days were traded, so an old run carries on unchanged.
  */
+function upgradeFromVersion1(fields: Fields): Fields {
+  const history = Array.isArray(fields.history)
+    ? fields.history.map((day: unknown) => ({
+        ...asFields(day, "A day in the history"),
+        eventId: ORDINARY_DAY.id,
+      }))
+    : fields.history;
+  return { ...fields, version: 2, events: CLASSIC_WEEK, history };
+}
+
+/**
+ * Version 2 saves come from before the upgrades shop. They become version 3 with no
+ * upgrades bought and no discounted stock, and every recorded sale marked as full price,
+ * which is exactly how those days were traded.
+ */
+function upgradeFromVersion2(fields: Fields): Fields {
+  const stock = asFields(fields.stock, "Stock");
+  const history = Array.isArray(fields.history)
+    ? fields.history.map((day: unknown) => {
+        const dayFields = asFields(day, "A day in the history");
+        const lines = Array.isArray(dayFields.lines)
+          ? dayFields.lines.map((line: unknown) => ({
+              ...asFields(line, "A receipt line"),
+              discountedUnitsSold: 0,
+            }))
+          : dayFields.lines;
+        return { ...dayFields, lines };
+      })
+    : fields.history;
+  return {
+    ...fields,
+    version: 3,
+    discountedStock: Object.fromEntries(Object.keys(stock).map((id) => [id, 0])),
+    purchasedUpgrades: [],
+    upgradePurchaseDays: {},
+    history,
+  };
+}
+
+/** Brings older save formats up to date, one version step at a time. */
 export function migrate(data: unknown): Fields {
-  const fields = asFields(data, "The save");
+  let fields = asFields(data, "The save");
+  if (fields.version === 1) {
+    fields = upgradeFromVersion1(fields);
+  }
+  if (fields.version === 2) {
+    fields = upgradeFromVersion2(fields);
+  }
   const version = fields.version;
   if (version === RUN_FORMAT_VERSION) {
     return fields;

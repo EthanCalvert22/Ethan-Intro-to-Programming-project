@@ -30,9 +30,7 @@ const tiers = [
 export function renderDemandPanel(): HTMLElement {
   return el("section", { class: "panel demand-panel", "aria-labelledby": "demand-title" }, [
     el("h2", { id: "demand-title" }, ["How customers decide"]),
-    el("p", {}, [
-      "Your price sets the base demand for each item. Active upgrades add customers to these counts.",
-    ]),
+    el("p", {}, ["Each day, for each item, customers compare your price with its fair price:"]),
     el(
       "ol",
       { class: "demand-steps" },
@@ -45,7 +43,7 @@ export function renderDemandPanel(): HTMLElement {
       ),
     ),
     el("p", { class: "hint" }, [
-      "You sell the smaller of: customers who want it, or what is on your shelf. Prices are compared to the exact cent, and nothing is random. Leftover stock waits on the shelf for tomorrow.",
+      "Then campus events scale these numbers for the items they affect, from half to one and a half times (check the campus news), and active upgrades add their bonus to any item that already has customers. You sell the smaller of: customers who want it, or what is on your shelf. Prices are compared to the exact cent, and leftover stock waits on the shelf for tomorrow.",
     ]),
   ]);
 }

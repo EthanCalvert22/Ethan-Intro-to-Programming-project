@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buy,
   daysCompleted,
+  discountedStockOf,
   newRun,
   priceOf,
   setPrice,
@@ -41,14 +42,17 @@ describe("newRun (CT01 starting state)", () => {
   it("starts on day 1 with €100, an empty shelf and reference prices", () => {
     const run = newRun(cafe);
     expect(run).toEqual({
-      version: 1,
+      version: 3,
       status: "in_progress",
       currentDay: 1,
       cashCents: STARTING_CASH_CENTS,
       stock: { "flat-white": 0, toastie: 0, brownie: 0 },
+      discountedStock: { "flat-white": 0, toastie: 0, brownie: 0 },
       prices: { "flat-white": 280, toastie: 450, brownie: 180 },
+      events: ["ordinary-day", "ordinary-day", "ordinary-day", "ordinary-day", "ordinary-day"],
       history: [],
       purchasedUpgrades: [],
+      upgradePurchaseDays: {},
     });
     expect(STARTING_CASH_CENTS).toBe(10000);
     expect(RUN_LENGTH_DAYS).toBe(5);
@@ -144,6 +148,7 @@ describe("tradeDay (CT04, CT R2, CT R4, CT R5)", () => {
     const day = run.history[0]!;
     expect(day.lines[0]).toEqual({
       productId: "lemonade",
+      discountedUnitsSold: 0,
       priceCents: 400,
       demand: 10,
       unitsSold: 10,
@@ -239,8 +244,9 @@ describe("summary (CT05)", () => {
 
 describe("lookups on incomplete records", () => {
   it("treats a product missing from the shelf as zero stock", () => {
-    const run: Run = { ...newRun(cafe), stock: {} };
+    const run: Run = { ...newRun(cafe), stock: {}, discountedStock: {} };
     expect(stockOf(run, "toastie")).toBe(0);
+    expect(discountedStockOf(run, "toastie")).toBe(0);
   });
 
   it("falls back to the reference price when no price was chosen", () => {

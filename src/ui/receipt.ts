@@ -1,4 +1,5 @@
 import { findProduct, type Catalogue } from "../domain/catalogue";
+import { findEvent, ORDINARY_DAY } from "../domain/events";
 import { formatEuros } from "../domain/money";
 import type { DayLine, DayResult } from "../domain/run";
 import { el } from "./dom";
@@ -38,6 +39,7 @@ export function renderReceipt(day: DayResult, catalogue: Catalogue): HTMLElement
       el("header", { class: "receipt-header" }, [
         el("p", { class: "receipt-shop", "aria-hidden": "true" }, ["BREW & BYTE"]),
         el("h3", { id: `receipt-title-${day.day}` }, [`Day ${day.day} receipt`]),
+        el("p", { class: "receipt-event" }, [findEvent(day.eventId)?.name ?? ORDINARY_DAY.name]),
       ]),
       el(
         "ul",

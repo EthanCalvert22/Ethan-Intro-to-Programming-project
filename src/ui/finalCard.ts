@@ -34,7 +34,12 @@ function encouragement(verdict: Verdict): string {
 }
 
 /** The "Final results" card shown after day five, with a message that depends on the outcome. */
-export function renderFinalCard(result: FinalSummary, onNewRun: () => void): HTMLElement {
+/** The card also shows how the run did on the high scores, when it has just finished. */
+export function renderFinalCard(
+  result: FinalSummary,
+  onNewRun: () => void,
+  scoreNote: string | null = null,
+): HTMLElement {
   const verdict = verdictOf(result.gainLossCents);
   const newRunButton = el("button", { type: "button", class: "button button-primary" }, [
     "Start a new run",
@@ -69,6 +74,9 @@ export function renderFinalCard(result: FinalSummary, onNewRun: () => void): HTM
         ]),
       ]),
       el("p", {}, [encouragement(verdict)]),
+      ...(scoreNote === null
+        ? []
+        : [el("p", { class: "final-score-note", "data-testid": "score-note" }, [scoreNote])]),
       newRunButton,
     ],
   );

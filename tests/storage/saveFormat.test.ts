@@ -34,110 +34,21 @@ describe("writeSave and readSave", () => {
 
   it("stores the whole run, with its version, as one JSON value", () => {
     const data = JSON.parse(writeSave(playedRun())) as Record<string, unknown>;
-    expect(data.version).toBe(1);
+    expect(data.version).toBe(3);
     expect(Object.keys(data).sort()).toEqual(
       [
         "cashCents",
         "currentDay",
+        "discountedStock",
+        "events",
         "history",
         "prices",
         "purchasedUpgrades",
         "status",
         "stock",
+        "upgradePurchaseDays",
         "version",
       ].sort(),
-    );
-  });
-
-  it("round-trips an active upgrade and its boosted receipt after it expires", () => {
-    const purchase = buyUpgrade(playedRun(), "go-viral");
-    if (!purchase.ok) throw new Error(purchase.error.message);
-    expect(readSave(writeSave(purchase.value), cafe)).toEqual({ ok: true, run: purchase.value });
-    const traded = tradeDay(purchase.value, cafe);
-    if (!traded.ok) throw new Error(traded.error.message);
-    expect(traded.value.history[1]?.lines[0]?.demand).toBe(15);
-    expect(readSave(writeSave(traded.value), cafe)).toEqual({ ok: true, run: traded.value });
-    expect(
-      problemWith(
-        writeSave({
-          ...traded.value,
-          upgradePurchaseDays: { "go-viral": 1 },
-        }),
-      ),
-    ).toContain("demand");
-  });
-
-  it("loads saves from before the shop and restores purchases from before dates were recorded", () => {
-    const oldSave = tamper(({ purchasedUpgrades: _drop, ...rest }) => rest);
-    expect(readSave(oldSave, cafe)).toEqual({ ok: true, run: playedRun() });
-    const purchase = buyUpgrade(playedRun(), "loyalty-program");
-    if (!purchase.ok) throw new Error(purchase.error.message);
-    const { upgradePurchaseDays: _drop, ...legacy } = purchase.value;
-    expect(readSave(writeSave(legacy), cafe)).toEqual({ ok: true, run: purchase.value });
-  });
-
-  it.each([
-    { purchasedUpgrades: ["fake"] },
-    { purchasedUpgrades: ["go-viral", "go-viral"] },
-    { purchasedUpgrades: ["go-viral"], upgradePurchaseDays: { "go-viral": 3 } },
-    { purchasedUpgrades: ["go-viral"], upgradePurchaseDays: {} },
-    { upgradePurchaseDays: { "go-viral": 2 } },
-  ])("refuses inconsistent upgrade data: %j", (change) => {
-    expect(problemWith(tamper((data) => ({ ...data, ...change })))).toMatch(
-      /upgrades|purchase days/,
-    );
-  });
-
-  it("round-trips discounted inventory and receipts while keeping earlier receipts at full cost", () => {
-    const before = playedRun();
-    const purchase = buyUpgrade(before, "supplier-partnership");
-    if (!purchase.ok) throw new Error(purchase.error.message);
-    const order = buy(purchase.value, cafe, "toastie", 12);
-    if (!order.ok) throw new Error(order.error.message);
-    expect(readSave(writeSave(order.value), cafe)).toEqual({ ok: true, run: order.value });
-    const traded = tradeDay(order.value, cafe);
-    if (!traded.ok) throw new Error(traded.error.message);
-    expect(traded.value.history[0]).toEqual(before.history[0]);
-    expect(traded.value.discountedStock?.toastie).toBe(4);
-    expect(readSave(writeSave(traded.value), cafe)).toEqual({ ok: true, run: traded.value });
-    expect(problemWith(writeSave({ ...traded.value, discountedStock: { toastie: 5 } }))).toContain(
-      "Discounted stock",
-    );
-    for (const [index, units] of [
-      [0, 1],
-      [1, -1],
-      [1, 11],
-    ] as const) {
-      const history = traded.value.history.map((day, position) =>
-        position === index
-          ? {
-              ...day,
-              lines: day.lines.map((line) =>
-                line.productId === "toastie" ? { ...line, discountedUnitsSold: units } : line,
-              ),
-            }
-          : day,
-      );
-      expect(problemWith(writeSave({ ...traded.value, history }))).toContain(
-        "discounted units sold",
-      );
-    }
-  });
-
-  it.each([{ toastie: 1 }, { toastie: -1 }, { unknown: 0 }])(
-    "refuses impossible discounted stock: %j",
-    (discountedStock) => {
-      const purchase = buyUpgrade(newRun(cafe), "supplier-partnership");
-      if (!purchase.ok) throw new Error(purchase.error.message);
-      expect(problemWith(writeSave({ ...purchase.value, discountedStock }))).toContain(
-        "Discounted stock",
-      );
-    },
-  );
-
-  it("refuses discounted stock without a supplier partnership", () => {
-    expect(problemWith(writeSave({ ...newRun(cafe), discountedStock: {} }))).toContain(
-      "Discounted stock",
     );
   });
 
@@ -157,7 +68,47 @@ describe("readSave refuses damaged saves with a plain explanation", () => {
     ["a list", "[]", "not in the expected format"],
     ["no version", tamper(({ version: _drop, ...rest }) => rest), "no recognisable version"],
     ["a text version", tamper((data) => ({ ...data, version: "1" })), "no recognisable version"],
-    ["a newer version", tamper((data) => ({ ...data, version: 2 })), "newer version"],
+    ["a newer version", tamper((data) => ({ ...data, version: 4 })), "newer version"],
+    [
+      "no planned events",
+      tamper(({ events: _drop, ...rest }) => rest),
+      "planned events is not a list",
+    ],
+    [
+      "a planned event that is not text",
+      tamper((data) => ({ ...data, events: [1, 2, 3, 4, 5] })),
+      "The event for day 1",
+    ],
+    [
+      "an unknown planned event",
+      tamper((data) => ({
+        ...data,
+        events: ["alien-invasion", ...(data.events as string[]).slice(1)],
+      })),
+      'The event "alien-invasion" is not recognised',
+    ],
+    [
+      "only four planned events",
+      tamper((data) => ({ ...data, events: (data.events as string[]).slice(1) })),
+      "an event for each of the 5 days",
+    ],
+    [
+      "a recorded day without its event",
+      tamper((data) => {
+        const [day] = data.history as Record<string, unknown>[];
+        const { eventId: _drop, ...rest } = day!;
+        return { ...data, history: [rest] };
+      }),
+      "Day 1 in the history event",
+    ],
+    [
+      "a recorded day with a different event from the plan",
+      tamper((data) => {
+        const [day] = data.history as Record<string, unknown>[];
+        return { ...data, history: [{ ...day, eventId: "open-day" }] };
+      }),
+      "does not match the event planned",
+    ],
     ["an unknown status", tamper((data) => ({ ...data, status: "paused" })), "status"],
     ["cash as text", tamper((data) => ({ ...data, cashCents: "100" })), "Cash is not a number"],
     ["negative cash", tamper((data) => ({ ...data, cashCents: -1 })), "Cash must be"],
@@ -248,7 +199,173 @@ describe("readSave refuses damaged saves with a plain explanation", () => {
 
 describe("migrate", () => {
   it("passes a current save through unchanged", () => {
-    const data = { version: 1, anything: "else" };
+    const data = { version: 3, anything: "else" };
     expect(migrate(data)).toBe(data);
+  });
+
+  /** A save exactly as the game wrote it before campus events existed. */
+  function versionOneSave(): Record<string, unknown> {
+    const {
+      events: _events,
+      history,
+      ...rest
+    } = JSON.parse(writeSave(playedRun())) as Record<string, unknown>;
+    const oldHistory = (history as Record<string, unknown>[]).map(
+      ({ eventId: _eventId, ...day }) => day,
+    );
+    return { ...rest, version: 1, history: oldHistory };
+  }
+
+  it("upgrades a save from before events: the run carries on exactly as it was", () => {
+    const read = readSave(JSON.stringify(versionOneSave()), cafe);
+    expect(read).toEqual({ ok: true, run: playedRun() });
+  });
+
+  it("still refuses a damaged old save after upgrading it", () => {
+    const broken = { ...versionOneSave(), history: "lost" };
+    expect(problemWith(JSON.stringify(broken))).toContain("history is not a list");
+    const brokenDay = { ...versionOneSave(), history: ["day one"] };
+    expect(problemWith(JSON.stringify(brokenDay))).toContain("A day in the history");
+  });
+});
+
+describe("saves with upgrades (format version 3)", () => {
+  /** A run with the loyalty program and supplier partnership bought, and discounted stock. */
+  function upgradedRun(): Run {
+    const steps = [
+      (run: Run) => buyUpgrade(run, "loyalty-program"),
+      (run: Run) => buyUpgrade(run, "supplier-partnership"),
+      (run: Run) => buy(run, cafe, "toastie", 12),
+      (run: Run) => tradeDay(run, cafe),
+    ];
+    return steps.reduce((run, step) => {
+      const outcome = step(run);
+      if (!outcome.ok) throw new Error(outcome.error.message);
+      return outcome.value;
+    }, newRun(cafe));
+  }
+
+  function tamperUpgraded(change: (data: Record<string, unknown>) => unknown): string {
+    return JSON.stringify(change(JSON.parse(writeSave(upgradedRun())) as Record<string, unknown>));
+  }
+
+  it("round-trips upgrades and discounted stock exactly", () => {
+    const run = upgradedRun();
+    expect(run.discountedStock.toastie).toBe(0);
+    expect(run.history[0]?.lines[1]?.discountedUnitsSold).toBe(12);
+    expect(readSave(writeSave(run), cafe)).toEqual({ ok: true, run });
+  });
+
+  it("upgrades a version 2 save (before upgrades): nothing bought, nothing discounted", () => {
+    const current = JSON.parse(writeSave(playedRun())) as Record<string, unknown>;
+    const {
+      discountedStock: _stock,
+      purchasedUpgrades: _bought,
+      upgradePurchaseDays: _days,
+      history,
+      ...rest
+    } = current;
+    const oldHistory = (history as Record<string, unknown>[]).map((day) => ({
+      ...day,
+      lines: (day.lines as Record<string, unknown>[]).map(
+        ({ discountedUnitsSold: _units, ...line }) => line,
+      ),
+    }));
+    const versionTwo = { ...rest, version: 2, history: oldHistory };
+    expect(readSave(JSON.stringify(versionTwo), cafe)).toEqual({ ok: true, run: playedRun() });
+  });
+
+  it("still refuses a damaged version 2 save after upgrading it", () => {
+    const current = JSON.parse(writeSave(playedRun())) as Record<string, unknown>;
+    const [day] = current.history as Record<string, unknown>[];
+    const broken = { ...current, version: 2, history: [{ ...day, lines: "lost" }] };
+    expect(problemWith(JSON.stringify(broken))).toContain("lines is not a list");
+    const brokenLine = { ...current, version: 2, history: [{ ...day, lines: ["torn"] }] };
+    expect(problemWith(JSON.stringify(brokenLine))).toContain("A receipt line");
+  });
+
+  it.each<[string, string, string]>([
+    [
+      "bought upgrades that are not a list",
+      tamperUpgraded((d) => ({ ...d, purchasedUpgrades: "all" })),
+      "bought upgrades is not a list",
+    ],
+    [
+      "an upgrade id that is not text",
+      tamperUpgraded((d) => ({ ...d, purchasedUpgrades: [7] })),
+      "Bought upgrade 1",
+    ],
+    [
+      "an unknown upgrade",
+      tamperUpgraded((d) => ({
+        ...d,
+        purchasedUpgrades: ["time-machine"],
+        upgradePurchaseDays: { "time-machine": 1 },
+      })),
+      "Bought upgrades must be known",
+    ],
+    [
+      "the same upgrade twice",
+      tamperUpgraded((d) => ({ ...d, purchasedUpgrades: ["loyalty-program", "loyalty-program"] })),
+      "each bought only once",
+    ],
+    [
+      "a purchase with no day",
+      tamperUpgraded((d) => ({ ...d, upgradePurchaseDays: { "loyalty-program": 1 } })),
+      "don't match the purchases",
+    ],
+    [
+      "a purchase dated in the future",
+      tamperUpgraded((d) => ({
+        ...d,
+        upgradePurchaseDays: { "loyalty-program": 1, "supplier-partnership": 5 },
+      })),
+      "don't match the purchases",
+    ],
+    [
+      "missing discounted stock",
+      tamperUpgraded(({ discountedStock: _drop, ...rest }) => rest),
+      "Discounted stock is not",
+    ],
+    [
+      "more discounted stock than stock",
+      tamperUpgraded((d) => ({
+        ...d,
+        discountedStock: { ...(d.discountedStock as object), "flat-white": 3 },
+      })),
+      "more discounted Flat white",
+    ],
+    [
+      "discounted stock without the partnership",
+      JSON.stringify({
+        ...(JSON.parse(writeSave(playedRun())) as Record<string, unknown>),
+        discountedStock: { "flat-white": 0, toastie: 1, brownie: 0 },
+      }),
+      "needs the Supplier Partnership",
+    ],
+    [
+      "a discounted sale without the partnership",
+      (() => {
+        const data = JSON.parse(writeSave(playedRun())) as Record<string, unknown>;
+        const [day] = data.history as Record<string, unknown>[];
+        const lines = (day!.lines as Record<string, unknown>[]).map((line) =>
+          line.productId === "toastie" ? { ...line, discountedUnitsSold: 2 } : line,
+        );
+        return JSON.stringify({ ...data, history: [{ ...day, lines }] });
+      })(),
+      "discounted units of Toastie are not possible",
+    ],
+    [
+      "a receipt line with no discounted count",
+      tamperUpgraded((d) => {
+        const [day] = d.history as Record<string, unknown>[];
+        const [line, ...rest] = day!.lines as Record<string, unknown>[];
+        const { discountedUnitsSold: _drop, ...trimmed } = line!;
+        return { ...d, history: [{ ...day, lines: [trimmed, ...rest] }] };
+      }),
+      "discounted units is not a number",
+    ],
+  ])("refuses %s", (_label, text, wording) => {
+    expect(problemWith(text)).toContain(wording);
   });
 });

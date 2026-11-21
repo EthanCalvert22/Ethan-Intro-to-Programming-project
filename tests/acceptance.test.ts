@@ -26,8 +26,10 @@ interface StateCheck {
 }
 
 interface Step {
-  do: "buy" | "buyText" | "setPrice" | "setPriceText" | "trade" | "restart" | "newRun";
+  do:
+    "buy" | "buyText" | "setPrice" | "setPriceText" | "buyUpgrade" | "trade" | "restart" | "newRun";
   product?: string;
+  upgrade?: string;
   quantity?: number;
   priceCents?: number;
   text?: string;
@@ -43,7 +45,7 @@ interface Scenario {
   id: string;
   title: string;
   catalogue: "brief" | "brew-and-byte";
-  start?: { cashCents?: number; stock?: Record<string, number> };
+  start?: { cashCents?: number; stock?: Record<string, number>; events?: string[] };
   steps: Step[];
 }
 
@@ -70,7 +72,7 @@ function openReady(catalogue: Catalogue, storage: CountingStorage): Shop {
 }
 
 function startingRun(scenario: Scenario, catalogue: Catalogue): Run {
-  const fresh = newRun(catalogue);
+  const fresh = newRun(catalogue, scenario.start?.events);
   return {
     ...fresh,
     cashCents: scenario.start?.cashCents ?? fresh.cashCents,
@@ -93,6 +95,8 @@ function perform(shop: Shop, step: Step): ActionOutcome | "no-action" {
       const parsed = parsePriceText(step.text ?? "");
       return parsed.ok ? shop.setPrice(product, parsed.value) : { ok: false, ...parsed.error };
     }
+    case "buyUpgrade":
+      return shop.buyUpgrade(step.upgrade ?? "");
     case "trade":
       return shop.trade();
     case "newRun":

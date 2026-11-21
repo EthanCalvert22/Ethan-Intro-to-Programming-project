@@ -28,7 +28,7 @@ export class UpgradesShop {
       button.addEventListener("click", () => {
         buyUpgrade(upgrade.id);
       });
-      const card = el("li", {}, [
+      const card = el("li", { class: "upgrade-card", "data-upgrade": upgrade.id }, [
         el("h3", {}, [upgrade.name]),
         el("p", { class: "hint" }, [upgrade.description]),
         status,
@@ -48,11 +48,13 @@ export class UpgradesShop {
   }
 
   update(run: Run): void {
-    for (const { upgrade, button, status } of this.cards) {
-      button.disabled =
-        run.status === "completed" ||
-        run.purchasedUpgrades.includes(upgrade.id) ||
-        run.cashCents < upgrade.costCents;
+    for (const { upgrade, card, button, status } of this.cards) {
+      const bought = run.purchasedUpgrades.includes(upgrade.id);
+      button.disabled = run.status === "completed" || bought || run.cashCents < upgrade.costCents;
+      button.textContent = bought
+        ? `Bought ${upgrade.name}`
+        : `Buy ${upgrade.name} · ${formatEuros(upgrade.costCents)}`;
+      card.classList.toggle("upgrade-bought", bought);
       status.textContent = statusFor(run, upgrade);
     }
   }

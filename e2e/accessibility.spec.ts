@@ -53,13 +53,16 @@ test("results and errors are announced through live regions", async ({ page }) =
 
 test("every input has a visible label", async ({ page }) => {
   await freshStart(page);
-  const inputs = page.locator("input");
-  const count = await inputs.count();
-  expect(count).toBe(6);
-  for (let index = 0; index < count; index += 1) {
-    const id = await inputs.nth(index).getAttribute("id");
+  // Six on the shelf (quantity and price for each item)...
+  const shelfInputs = page.locator("main input");
+  expect(await shelfInputs.count()).toBe(6);
+  for (let index = 0; index < 6; index += 1) {
+    const id = await shelfInputs.nth(index).getAttribute("id");
     await expect(page.locator(`label[for="${id ?? ""}"]`)).toBeVisible();
   }
+  // ...and the campus events tick box, which is visible once the New run dialog opens.
+  await page.getByRole("button", { name: "New run", exact: true }).click();
+  await expect(page.locator('label[for="new-run-events"]')).toBeVisible();
 });
 
 test("the next-step glow is switched off when reduced motion is requested", async ({ page }) => {

@@ -1,7 +1,9 @@
 import type { Catalogue, Product } from "./catalogue";
-import { demandForDay } from "./demand";
+import { findEvent } from "./events";
 import { MAX_PRICE_CENTS, RUN_LENGTH_DAYS } from "./rules";
 import {
+  customersFor,
+  discountedStockOf,
   inventoryCostCents,
   stockOf,
   type DayLine,
@@ -46,7 +48,8 @@ function checkLine(line: DayLine, product: Product, run: Run, day: number): stri
   if (!isWholeAtLeast(line.priceCents, 1)) {
     return `the price of ${product.name} is not valid.`;
   }
-  if (line.demand !== demandForDay(run, day, line.priceCents, product.referencePriceCents)) {
+  const expectedDemand = customersFor(run, product, line.priceCents, day);
+  if (line.demand !== expectedDemand) {
     return `the demand for ${product.name} does not follow the rule.`;
   }
   if (!isWholeAtLeast(line.unitsSold, 0) || line.unitsSold > line.demand) {
@@ -55,13 +58,13 @@ function checkLine(line: DayLine, product: Product, run: Run, day: number): stri
   if (line.revenueCents !== line.unitsSold * line.priceCents) {
     return `the revenue for ${product.name} does not add up.`;
   }
-  const discounted = line.discountedUnitsSold ?? 0;
+  const discounted = line.discountedUnitsSold;
   if (
     !isWholeAtLeast(discounted, 0) ||
     discounted > line.unitsSold ||
     (discounted > 0 && !hasSupplierDiscount(run, day))
   ) {
-    return `the discounted units sold of ${product.name} are not possible.`;
+    return `the discounted units of ${product.name} are not possible.`;
   }
   if (line.cogsCents !== inventoryCostCents(product, line.unitsSold, discounted)) {
     return `the cost of goods sold for ${product.name} does not add up.`;
@@ -83,10 +86,14 @@ function checkTotals(day: DayResult): string | null {
   return matches ? null : "the totals do not match the lines.";
 }
 
-function checkDay(day: DayResult, position: number, catalogue: Catalogue, run: Run): string | null {
+function checkDay(day: DayResult, position: number, run: Run, catalogue: Catalogue): string | null {
   const label = `Day ${position + 1}`;
   if (day.day !== position + 1) {
     return `${label} is recorded out of order.`;
+  }
+  // checkEvents has already made sure every planned event exists.
+  if (findEvent(day.eventId) === undefined || day.eventId !== run.events[position]) {
+    return `${label} does not match the event planned for that day.`;
   }
   if (day.lines.length !== catalogue.length) {
     return `${label} does not have one line per product.`;
@@ -127,44 +134,44 @@ function checkProgress(run: Run): string | null {
     : "The history does not match the current day.";
 }
 
+function checkEvents(run: Run): string | null {
+  if (run.events.length !== RUN_LENGTH_DAYS) {
+    return `The run must plan an event for each of the ${RUN_LENGTH_DAYS} days.`;
+  }
+  const unknown = run.events.find((eventId) => findEvent(eventId) === undefined);
+  return unknown === undefined ? null : `The event "${unknown}" is not recognised.`;
+}
+
 function checkUpgrades(run: Run): string | null {
-  const purchased = run.purchasedUpgrades;
-  if (new Set(purchased).size !== purchased.length || purchased.some((id) => !findUpgrade(id))) {
-    return "Purchased upgrades must be known and listed only once.";
+  const bought = run.purchasedUpgrades;
+  if (new Set(bought).size !== bought.length || bought.some((id) => !findUpgrade(id))) {
+    return "Bought upgrades must be known, and each bought only once.";
   }
-  const dates = run.upgradePurchaseDays;
-  // A finished save from before upgrades affected demand can have purchases without dates.
-  if (dates === undefined && run.status === "completed") {
-    return null;
-  }
-  const entries = Object.entries(dates ?? {});
-  const valid =
-    entries.length === purchased.length &&
-    entries.every(
+  const days = Object.entries(run.upgradePurchaseDays);
+  const matches =
+    days.length === bought.length &&
+    days.every(
       ([id, day]) =>
-        purchased.includes(id) &&
-        day !== undefined &&
-        isWholeAtLeast(day, 1) &&
-        day <= run.currentDay,
+        bought.includes(id) && day !== undefined && isWholeAtLeast(day, 1) && day <= run.currentDay,
     );
-  return valid ? null : "Upgrade purchase days must match the purchases and game progress.";
+  return matches ? null : "The days upgrades were bought don't match the purchases.";
 }
 
 function checkDiscountedStock(run: Run, catalogue: Catalogue): string | null {
-  if (run.discountedStock === undefined) {
-    return null;
+  const shelfProblem = checkShelf(run.discountedStock, catalogue, "Discounted stock");
+  if (shelfProblem !== null) {
+    return shelfProblem;
   }
-  const valid =
-    hasSupplierDiscount(run) &&
-    Object.entries(run.discountedStock).every(
-      ([id, units]) =>
-        catalogue.some((product) => product.id === id) &&
-        isWholeAtLeast(units, 0) &&
-        units <= stockOf(run, id),
-    );
-  return valid
-    ? null
-    : "Discounted stock must belong to the menu and fit within the current stock.";
+  const tooMany = catalogue.find(
+    (product) => discountedStockOf(run, product.id) > stockOf(run, product.id),
+  );
+  if (tooMany !== undefined) {
+    return `There are more discounted ${tooMany.name} than ${tooMany.name} on the shelf.`;
+  }
+  const anyDiscounted = catalogue.some((product) => discountedStockOf(run, product.id) > 0);
+  return anyDiscounted && !hasSupplierDiscount(run)
+    ? "Discounted stock needs the Supplier Partnership."
+    : null;
 }
 
 /** Returns the first broken promise in a run, or null if the run is sound. */
@@ -174,6 +181,7 @@ export function findRunProblem(run: Run, catalogue: Catalogue): string | null {
   }
   const problem =
     checkProgress(run) ??
+    checkEvents(run) ??
     checkUpgrades(run) ??
     checkShelf(run.stock, catalogue, "Stock") ??
     checkDiscountedStock(run, catalogue) ??
@@ -187,7 +195,7 @@ export function findRunProblem(run: Run, catalogue: Catalogue): string | null {
     return problem;
   }
   for (const [position, day] of run.history.entries()) {
-    const dayProblem = checkDay(day, position, catalogue, run);
+    const dayProblem = checkDay(day, position, run, catalogue);
     if (dayProblem !== null) {
       return dayProblem;
     }

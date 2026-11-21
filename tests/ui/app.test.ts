@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { CLASSIC_WEEK } from "../../src/domain/events";
 import { newRun } from "../../src/domain/run";
 import { BACKUP_KEY, RUN_KEY, type KeyValueStorage } from "../../src/storage/runStore";
+import { SCORES_BACKUP_KEY, SCORES_KEY } from "../../src/storage/scoreStore";
+import { formatScoreDate } from "../../src/ui/highScoresPanel";
 import { startApp } from "../../src/ui/app";
 import { productIcon } from "../../src/ui/icons";
 import { renderReceipt } from "../../src/ui/receipt";
@@ -91,8 +94,12 @@ function openButton(): HTMLButtonElement {
   return $<HTMLButtonElement>(".button-open");
 }
 
-function start(): void {
-  startApp(root, { localStorage: storage });
+/** Most tests play the classic week, so their numbers follow the original rules exactly. */
+function start(
+  planWeek: () => readonly string[] = () => CLASSIC_WEEK,
+  today: () => string = () => "2026-11-21",
+): void {
+  startApp(root, { localStorage: storage }, planWeek, today);
 }
 
 function closeDialog(value: string): void {
@@ -201,17 +208,69 @@ describe("buying upgrades", () => {
   });
 });
 
+describe("upgrades shop", () => {
+  it("buys an upgrade, says what it cost, and counts its bonus in the price hints", () => {
+    start();
+    button(/^Buy Student Loyalty Program/).click();
+    expect(testId("message")).toBe(
+      "Bought Student Loyalty Program for €15.00. €85.00 left in the till.",
+    );
+    expect(text("#upgrade-status-loyalty-program")).toBe("Active for the rest of this run");
+    expect(button("Bought Student Loyalty Program").disabled).toBe(true);
+    expect(text("#price-hint-toastie")).toBe(
+      "At €4.50, 12 customers will want one today (Student Loyalty Program +2).",
+    );
+  });
+
+  it("names both the event and the upgrade, and leaves priced-out items alone", () => {
+    start(() => ["exam-week", "ordinary-day", "ordinary-day", "ordinary-day", "ordinary-day"]);
+    button(/^Buy Student Loyalty Program/).click();
+    expect(text("#price-hint-flat-white")).toBe(
+      "At €2.80, 17 customers will want one today (Exam week, Student Loyalty Program +2).",
+    );
+    type(priceInput("brownie"), "3.61");
+    expect(text("#price-hint-brownie")).toBe(
+      "At €3.61, no customers will want one today (Exam week). Press Set price or Enter to use it.",
+    );
+  });
+
+  it("shows Go Viral as active today, then used after the trade", () => {
+    start();
+    button(/^Buy Go Viral/).click();
+    expect(text("#upgrade-status-go-viral")).toBe("Active today");
+    openButton().click();
+    expect(text("#upgrade-status-go-viral")).toBe("Used");
+  });
+
+  it("shows the supplier rate on new orders", () => {
+    start();
+    button(/^Buy Supplier Partnership/).click();
+    expect(text("article[data-product='toastie'] .product-facts")).toBe(
+      "Costs you €1.70 (supplier rate) · Fair price €4.50",
+    );
+    type(quantityInput("toastie"), "10");
+    expect(text("#order-total-toastie")).toBe("Total cost: €17.00");
+  });
+
+  it("closes the shop when the run is over", () => {
+    start();
+    playFiveDays();
+    expect(text("#upgrade-status-go-viral")).toBe("Run complete");
+    expect(button(/^Buy Go Viral/).disabled).toBe(true);
+  });
+});
+
 describe("setting prices", () => {
   it("describes demand live and sets the price on submit", () => {
     start();
     type(priceInput("toastie"), "4.51");
     expect(text("#price-hint-toastie")).toBe(
-      "At €4.51, 5 customers will want one each day. Press Set price or Enter to use it.",
+      "At €4.51, 5 customers will want one today. Press Set price or Enter to use it.",
     );
     submit(priceInput("toastie").form as HTMLFormElement);
     expect(testId("message")).toBe("Toastie now sells for €4.51.");
     expect(priceInput("toastie").value).toBe("4.51");
-    expect(text("#price-hint-toastie")).toBe("At €4.51, 5 customers will want one each day.");
+    expect(text("#price-hint-toastie")).toBe("At €4.51, 5 customers will want one today.");
     expect(storage.writes).toBe(1);
   });
 
@@ -485,9 +544,11 @@ describe("small building blocks", () => {
     const receipt = renderReceipt(
       {
         day: 1,
+        eventId: "mystery-event",
         lines: [
           {
             productId: "mystery",
+            discountedUnitsSold: 0,
             priceCents: 100,
             demand: 10,
             unitsSold: 0,
@@ -503,6 +564,8 @@ describe("small building blocks", () => {
       cafe,
     );
     expect(receipt.textContent).toContain("mystery");
+    // An event the game doesn't know is shown as an ordinary day rather than breaking the receipt.
+    expect(receipt.querySelector(".receipt-event")?.textContent).toBe("Ordinary day");
   });
 
   it("draws a plain icon for a product without its own picture", () => {
@@ -514,5 +577,283 @@ describe("small building blocks", () => {
     vi.resetModules();
     await import("../../src/main");
     expect(document.querySelector(".brand-name")?.textContent).toBe("Brew & Byte");
+  });
+});
+
+describe("campus events", () => {
+  const week = ["exam-week", "rainy-day", "ordinary-day", "open-day", "big-match"];
+  const newsCards = () => [...root.querySelectorAll<HTMLElement>(".news-card")];
+  const chips = (card: HTMLElement | undefined) =>
+    [...(card?.querySelectorAll(".news-chip") ?? [])].map((chip) => chip.textContent);
+
+  it("shows today's and tomorrow's events, and which items they affect", () => {
+    start(() => week);
+    const [today, tomorrow] = newsCards();
+    expect(today?.querySelector(".news-when")?.textContent).toBe("Today · Day 1");
+    expect(today?.querySelector(".news-name")?.textContent).toBe("Exam week");
+    expect(chips(today)).toEqual(["Flat white ×1.5", "Brownie ×1.5"]);
+    expect(tomorrow?.querySelector(".news-when")?.textContent).toBe("Tomorrow · Day 2");
+    expect(tomorrow?.querySelector(".news-name")?.textContent).toBe("Rainy day");
+    expect(chips(tomorrow)).toEqual(["Toastie ×1.5"]);
+    expect(root.querySelector(".news-up")).not.toBeNull();
+  });
+
+  it("counts today's event in each item's price hint", () => {
+    start(() => week);
+    expect(text("#price-hint-flat-white")).toBe(
+      "At €2.80, 15 customers will want one today (Exam week).",
+    );
+    expect(text("#price-hint-toastie")).toBe(
+      "At €4.50, 10 customers will want one today (Exam week).",
+    );
+  });
+
+  it("trades with the event and records it on the receipt", () => {
+    start(() => week);
+    buy("flat-white", 20);
+    openButton().click();
+    expect(testId("message")).toBe("Day 1 is done (Exam week): sold 15 items for €42.00.");
+    expect(text(".receipt-event")).toBe("Exam week");
+    const [today, tomorrow] = newsCards();
+    expect(today?.querySelector(".news-name")?.textContent).toBe("Rainy day");
+    expect(tomorrow?.querySelector(".news-name")?.textContent).toBe("Ordinary day");
+    expect(chips(tomorrow)).toEqual([]);
+  });
+
+  it("warns on the last day that there is no tomorrow, and hides the news once the run is over", () => {
+    start(() => week);
+    for (let day = 1; day <= 4; day += 1) {
+      openButton().click();
+    }
+    const [today, tomorrow] = newsCards();
+    expect(today?.querySelector(".news-name")?.textContent).toBe("Big match");
+    expect(root.querySelector(".news-down")).not.toBeNull();
+    expect(tomorrow?.querySelector(".news-name")?.textContent).toBe("Last day");
+    openButton().click();
+    expect($(".campus-news").hidden).toBe(true);
+  });
+
+  it("a new run plans a fresh week of events by default", () => {
+    start(() => week);
+    button("New run", root).click();
+    expect($<HTMLInputElement>("#new-run-events").checked).toBe(true);
+    closeDialog("confirm");
+    expect(JSON.parse(storage.getItem(RUN_KEY) ?? "null")).toMatchObject({ events: week });
+  });
+
+  it("unticking 'Include campus events' starts a classic week with the original rules", () => {
+    start(() => week);
+    button("New run", root).click();
+    $<HTMLInputElement>("#new-run-events").checked = false;
+    closeDialog("confirm");
+    expect(testId("message")).toBe(
+      "Fresh start! You have €100.00 and an empty shelf. This is a classic week with no campus events.",
+    );
+    expect(JSON.parse(storage.getItem(RUN_KEY) ?? "null")).toMatchObject({ events: CLASSIC_WEEK });
+    expect(newsCards()[0]?.querySelector(".news-name")?.textContent).toBe("Ordinary day");
+  });
+
+  it("plans a real random week when the app starts for a player", () => {
+    startApp(root, { localStorage: storage });
+    const saved = newsCards().map((card) => card.querySelector(".news-name")?.textContent);
+    expect(saved).toHaveLength(2);
+    expect(saved.every((name) => typeof name === "string" && name.length > 0)).toBe(true);
+  });
+});
+
+describe("high scores", () => {
+  const rows = () => [...root.querySelectorAll<HTMLElement>("[data-testid='score-row']")];
+  const rowText = (index: number) => rows()[index]?.textContent ?? "";
+  const savedScores = () =>
+    (JSON.parse(storage.getItem(SCORES_KEY) ?? "null") as { scores: unknown[] } | null)?.scores;
+
+  /** Plays a whole classic run, buying this many toasties on day one (12 gives +€30.00). */
+  function finishRun(toasties: number): void {
+    if (toasties > 0) {
+      buy("toastie", toasties);
+    }
+    playFiveDays();
+  }
+
+  function newRunConfirmed(withEvents = true): void {
+    button("New run", root).click();
+    $<HTMLInputElement>("#new-run-events").checked = withEvents;
+    closeDialog("confirm");
+  }
+
+  it("starts empty, with nothing to clear", () => {
+    start();
+    expect(text(".scores-empty")).toContain("No finished runs yet");
+    expect(button("Clear high scores").disabled).toBe(true);
+  });
+
+  it("records a finished run with its date and tag, and celebrates a first personal best", () => {
+    start();
+    finishRun(12);
+    expect(testId("score-note")).toBe("New personal best! That's your best result yet.");
+    expect(rows()).toHaveLength(1);
+    expect(rowText(0)).toContain("+€30.00");
+    expect(rowText(0)).toContain("21 Nov 2026");
+    expect(rowText(0)).toContain("Classic");
+    expect(rowText(0)).toContain("New");
+    expect(savedScores()).toEqual([
+      { gainLossCents: 3000, finalCashCents: 13000, withEvents: false, date: "2026-11-21" },
+    ]);
+  });
+
+  it("ranks later runs, keeps scores through a new run, and never records a run twice", () => {
+    start();
+    finishRun(12);
+    newRunConfirmed(false);
+    expect(rows()).toHaveLength(1);
+    finishRun(5);
+    expect(testId("score-note")).toBe("That's number 2 on your high scores.");
+    expect(rows().map((row) => row.querySelector(".score-amount")?.textContent)).toEqual([
+      "+€30.00",
+      "+€12.50",
+    ]);
+    // Reopening the finished run shows the board but adds nothing and saves nothing.
+    const writes = storage.writes;
+    start();
+    expect(rows()).toHaveLength(2);
+    expect(root.querySelector("[data-testid='score-note']")).toBeNull();
+    expect(storage.writes).toBe(writes);
+  });
+
+  it("tags a run that had campus events", () => {
+    start(() => ["exam-week", "ordinary-day", "ordinary-day", "ordinary-day", "ordinary-day"]);
+    finishRun(12);
+    expect(rowText(0)).toContain("Events");
+    expect(rows()[0]?.querySelector(".score-tag-events")).not.toBeNull();
+  });
+
+  it("says so when a run misses the top five, without saving anything", () => {
+    start();
+    for (const toasties of [12, 11, 10, 9, 8]) {
+      finishRun(toasties);
+      newRunConfirmed(false);
+    }
+    const writes = storage.writes;
+    playFiveDays();
+    expect(testId("score-note")).toBe("Not in your top five this time. Your best is +€30.00.");
+    expect(rows()).toHaveLength(5);
+    // The trades save the run; the scores are not written again.
+    expect(storage.writes - writes).toBe(5);
+  });
+
+  it("clears the board only after a second, confirming click", () => {
+    start();
+    finishRun(12);
+    button("Clear high scores").click();
+    expect(text(".scores-confirm-text")).toBe("Clear all 1 high score? This can't be undone.");
+    expect(document.activeElement?.textContent).toBe("Cancel");
+    button("Cancel").click();
+    expect(rows()).toHaveLength(1);
+    expect(text(".high-scores [role='status']")).toBe("Your high scores are unchanged.");
+    expect(document.activeElement?.textContent).toBe("Clear high scores");
+    button("Clear high scores").click();
+    button("Yes, clear them").click();
+    expect(rows()).toHaveLength(0);
+    expect(savedScores()).toEqual([]);
+    expect(text(".high-scores [role='status']")).toBe("High scores cleared.");
+    expect(document.activeElement?.id).toBe("scores-title");
+  });
+
+  it("explains when clearing can't be saved", () => {
+    start();
+    finishRun(12);
+    newRunConfirmed(false);
+    finishRun(5);
+    button("Clear high scores").click();
+    storage.failWrites = true;
+    button("Yes, clear them").click();
+    expect(text(".high-scores [role='status']")).toContain("I couldn't clear them.");
+    expect(rows()).toHaveLength(2);
+    expect(root.querySelector(".scores-confirm-text")).toBeNull();
+  });
+
+  it("starts with an empty board when saved scores can't be read, and backs them up before saving", () => {
+    storage.data.set(SCORES_KEY, "{oops");
+    start();
+    expect(text(".scores-notice")).toContain("I couldn't read your saved high scores");
+    expect(rows()).toHaveLength(0);
+    finishRun(12);
+    expect(storage.getItem(SCORES_BACKUP_KEY)).toBe("{oops");
+    expect(savedScores()).toHaveLength(1);
+    expect($(".scores-notice").hidden).toBe(true);
+  });
+
+  it("doesn't replace unreadable scores it couldn't back up", () => {
+    storage.data.set(SCORES_KEY, "{oops");
+    start();
+    buy("toastie", 12);
+    for (let day = 1; day <= 4; day += 1) {
+      openButton().click();
+    }
+    // Let the last trade save, but refuse the next writes (the backup).
+    let allowed = 1;
+    const realSetItem = storage.setItem.bind(storage);
+    storage.setItem = (key: string, value: string) => {
+      if (allowed <= 0) {
+        throw new DOMException("full", "QuotaExceededError");
+      }
+      allowed -= 1;
+      realSetItem(key, value);
+    };
+    openButton().click();
+    expect(testId("score-note")).toContain("I couldn't save this high score.");
+    expect(testId("score-note")).toContain("couldn't keep a backup");
+    expect(storage.data.get(SCORES_KEY)).toBe("{oops");
+  });
+
+  it("says so if a score can't be saved", () => {
+    start();
+    buy("toastie", 12);
+    for (let day = 1; day <= 4; day += 1) {
+      openButton().click();
+    }
+    let allowed = 1;
+    const realSetItem = storage.setItem.bind(storage);
+    storage.setItem = (key: string, value: string) => {
+      if (allowed <= 0) {
+        throw new DOMException("full", "QuotaExceededError");
+      }
+      allowed -= 1;
+      realSetItem(key, value);
+    };
+    openButton().click();
+    expect(testId("score-note")).toBe(
+      "I couldn't save this high score. Your browser's storage for this site is full.",
+    );
+    expect(rows()).toHaveLength(0);
+  });
+
+  it("warns when the browser won't let it read the scores", () => {
+    const realGetItem = storage.getItem.bind(storage);
+    storage.getItem = (key: string) => {
+      if (key === SCORES_KEY) {
+        throw new Error("blocked");
+      }
+      return realGetItem(key);
+    };
+    start();
+    expect(text(".scores-notice")).toContain("High scores may not be kept.");
+  });
+
+  it("dates a score with the player's own calendar day", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2027, 0, 5, 23, 30));
+    try {
+      startApp(root, { localStorage: storage }, () => CLASSIC_WEEK);
+      finishRun(12);
+      expect(rowText(0)).toContain("5 Jan 2027");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("writes dates the way people read them", () => {
+    expect(formatScoreDate("2026-11-21")).toBe("21 Nov 2026");
+    expect(formatScoreDate("2027-01-05")).toBe("5 Jan 2027");
   });
 });

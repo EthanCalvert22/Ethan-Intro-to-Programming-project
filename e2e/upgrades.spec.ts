@@ -1,56 +1,64 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { buy, card, freshStart, openForTheDay, receipt } from "./helpers";
+import { buy, card, freshStart, openForTheDay, receipt, savedRun } from "./helpers";
 
-test("shop purchases survive reloads, affect sales, and reset with a new run", async ({ page }) => {
-  await freshStart(page);
-  const shop = page.getByRole("region", { name: "Upgrades Shop" });
-  const loyalty = shop.getByRole("button", { name: /Buy Student Loyalty Program/ });
-  const viral = shop.getByRole("button", { name: /Buy Go Viral/ });
-  await expect(loyalty).toContainText("€15.00");
-  await expect(viral).toContainText("€20.00");
-  await loyalty.click();
-  await viral.click();
-  await page.reload();
-  await expect(page.getByTestId("cash")).toHaveText("€65.00");
-  await expect(loyalty).toBeDisabled();
-  await expect(viral).toBeDisabled();
-  await expect(shop.getByText("Active today")).toBeVisible();
-  await expect(card(page, "Toastie")).toContainText("17 customers will want one on day 1");
-  await buy(page, "Toastie", 18);
-  await openForTheDay(page, 1);
-  await expect(receipt(page)).toContainText("17 × €4.50");
-  await page.reload();
-  await expect(shop.getByText("Used", { exact: true })).toBeVisible();
-  await expect(viral).toBeDisabled();
-  await expect(card(page, "Toastie")).toContainText("12 customers will want one on day 2");
-  await page.getByRole("button", { name: "New run", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Yes, start a new run" }).click();
-  await expect(page.getByTestId("cash")).toHaveText("€100.00");
-  await expect(viral).toBeEnabled();
-  await expect(loyalty).toBeEnabled();
-});
-
-test("supplier prices, receipts and final profit use the actual inventory costs", async ({
+test("an upgrade is paid for, adds its bonus on the next trade, and survives a reload", async ({
   page,
 }) => {
   await freshStart(page);
-  await buy(page, "Toastie", 4);
-  await page.getByRole("button", { name: /Buy Supplier Partnership/ }).click();
-  await page.reload();
-  await expect(page.getByTestId("cash")).toHaveText("€67.00");
-  const toastie = card(page, "Toastie");
-  await expect(toastie).toContainText("Costs you €1.70");
-  await toastie.getByLabel("How many to order").fill("9");
-  await expect(toastie).toContainText("Total cost: €15.30");
-  await buy(page, "Toastie", 9);
-  await expect(page.getByTestId("cash")).toHaveText("€51.70");
+  const shop = page.getByRole("region", { name: "Upgrades Shop" });
+  await shop.getByRole("button", { name: /^Buy Student Loyalty Program/ }).click();
+  await expect(page.getByTestId("message")).toHaveText(
+    "Bought Student Loyalty Program for €15.00. €85.00 left in the till.",
+  );
+  await expect(shop.getByRole("button", { name: "Bought Student Loyalty Program" })).toBeDisabled();
+  await expect(card(page, "Toastie")).toContainText(
+    "At €4.50, 12 customers will want one today (Student Loyalty Program +2).",
+  );
+
+  await buy(page, "Toastie", 15);
   await openForTheDay(page, 1);
-  await expect(receipt(page)).toContainText("€18.20");
+  const toastie = receipt(page).locator('[data-product="toastie"]');
+  await expect(
+    toastie.locator(".receipt-row", { hasText: "Customers who wanted one" }),
+  ).toContainText("12");
+  await expect(toastie.locator(".receipt-row", { hasText: "Units sold" })).toContainText("12");
+
   await page.reload();
-  await expect(receipt(page)).toContainText("€18.20");
-  await toastie.getByLabel("Selling price (€)").fill("10.00");
-  for (let day = 2; day <= 5; day += 1) {
-    await openForTheDay(page, day);
-  }
-  await expect(page.getByTestId("gain-loss")).toHaveText("Overall gain of €1.80");
+  await expect(shop).toContainText("Active for the rest of this run");
+  expect((await savedRun(page)).purchasedUpgrades).toEqual(["loyalty-program"]);
 });
+
+test("the supplier partnership makes new stock cheaper", async ({ page }) => {
+  await freshStart(page);
+  await page.getByRole("button", { name: /^Buy Supplier Partnership/ }).click();
+  await expect(card(page, "Toastie")).toContainText("Costs you €1.70 (supplier rate)");
+  await buy(page, "Toastie", 10);
+  await expect(page.getByTestId("cash")).toHaveText("€58.00");
+});
+
+test("bonuses never bring customers to an item priced above twice its fair price", async ({
+  page,
+}) => {
+  await freshStart(page);
+  await page.getByRole("button", { name: /^Buy Go Viral/ }).click();
+  const brownie = card(page, "Brownie");
+  await brownie.getByLabel("Selling price (€)").fill("3.61");
+  await expect(brownie).toContainText("At €3.61, no customers will want one today.");
+});
+
+for (const colorScheme of ["light", "dark"] as const) {
+  test(`the upgrades shop has no serious accessibility issues (${colorScheme})`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme });
+    await freshStart(page);
+    await page.getByRole("button", { name: /^Buy Student Loyalty Program/ }).click();
+    const violations = (
+      await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze()
+    ).violations
+      .filter((violation) => violation.impact === "serious" || violation.impact === "critical")
+      .map((violation) => violation.id);
+    expect(violations).toEqual([]);
+  });
+}

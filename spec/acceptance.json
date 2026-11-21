@@ -6,87 +6,293 @@
     "A step's 'expect' is either { ok: true } or { error: <kind> }. Rejected steps must leave the run unchanged and write nothing to storage; accepted steps write exactly one save.",
     "'state' lists the values to check after the step; stock and prices may list only some products.",
     "'day' checks the receipt of the day just traded; 'lines' are keyed by product id.",
-    "The 'brief' catalogue reproduces the numbers used in the brief's acceptance criteria (an item costing €2 with a €4 reference price)."
+    "The 'brief' catalogue reproduces the numbers used in the brief's acceptance criteria (an item costing €2 with a €4 reference price).",
+    "'start.events' plans the run's week of campus events; without it a scenario plays the classic week (five ordinary days, the original rules).",
+    "'buyUpgrade' buys an upgrade from the shop by id (version 3)."
   ],
   "catalogues": {
     "brief": [
-      { "id": "lemonade", "name": "Lemonade", "unitCostCents": 200, "referencePriceCents": 400 },
-      { "id": "cookie", "name": "Cookie", "unitCostCents": 100, "referencePriceCents": 150 },
-      { "id": "muffin", "name": "Muffin", "unitCostCents": 50, "referencePriceCents": 125 }
+      {
+        "id": "lemonade",
+        "name": "Lemonade",
+        "unitCostCents": 200,
+        "referencePriceCents": 400
+      },
+      {
+        "id": "cookie",
+        "name": "Cookie",
+        "unitCostCents": 100,
+        "referencePriceCents": 150
+      },
+      {
+        "id": "muffin",
+        "name": "Muffin",
+        "unitCostCents": 50,
+        "referencePriceCents": 125
+      }
     ]
   },
   "demandCases": [
-    { "case": "A2", "referenceCents": 400, "priceCents": 400, "demand": 10 },
-    { "case": "A2", "referenceCents": 400, "priceCents": 401, "demand": 5 },
-    { "case": "A2", "referenceCents": 400, "priceCents": 800, "demand": 5 },
-    { "case": "A2", "referenceCents": 400, "priceCents": 801, "demand": 0 },
-    { "case": "below reference", "referenceCents": 400, "priceCents": 1, "demand": 10 },
-    { "case": "odd reference, at 2x", "referenceCents": 150, "priceCents": 300, "demand": 5 },
+    {
+      "case": "A2",
+      "referenceCents": 400,
+      "priceCents": 400,
+      "demand": 10
+    },
+    {
+      "case": "A2",
+      "referenceCents": 400,
+      "priceCents": 401,
+      "demand": 5
+    },
+    {
+      "case": "A2",
+      "referenceCents": 400,
+      "priceCents": 800,
+      "demand": 5
+    },
+    {
+      "case": "A2",
+      "referenceCents": 400,
+      "priceCents": 801,
+      "demand": 0
+    },
+    {
+      "case": "below reference",
+      "referenceCents": 400,
+      "priceCents": 1,
+      "demand": 10
+    },
+    {
+      "case": "odd reference, at 2x",
+      "referenceCents": 150,
+      "priceCents": 300,
+      "demand": 5
+    },
     {
       "case": "odd reference, 1 cent over 2x",
       "referenceCents": 150,
       "priceCents": 301,
       "demand": 0
     },
-    { "case": "odd cents reference, at 2x", "referenceCents": 175, "priceCents": 350, "demand": 5 },
+    {
+      "case": "odd cents reference, at 2x",
+      "referenceCents": 175,
+      "priceCents": 350,
+      "demand": 5
+    },
     {
       "case": "odd cents reference, over 2x",
       "referenceCents": 175,
       "priceCents": 351,
       "demand": 0
     },
-    { "case": "flat white reference", "referenceCents": 280, "priceCents": 280, "demand": 10 },
-    { "case": "flat white 1 cent over", "referenceCents": 280, "priceCents": 281, "demand": 5 },
-    { "case": "toastie at 2x", "referenceCents": 450, "priceCents": 900, "demand": 5 },
-    { "case": "toastie over 2x", "referenceCents": 450, "priceCents": 901, "demand": 0 },
-    { "case": "brownie far above", "referenceCents": 180, "priceCents": 100000, "demand": 0 }
+    {
+      "case": "flat white reference",
+      "referenceCents": 280,
+      "priceCents": 280,
+      "demand": 10
+    },
+    {
+      "case": "flat white 1 cent over",
+      "referenceCents": 280,
+      "priceCents": 281,
+      "demand": 5
+    },
+    {
+      "case": "toastie at 2x",
+      "referenceCents": 450,
+      "priceCents": 900,
+      "demand": 5
+    },
+    {
+      "case": "toastie over 2x",
+      "referenceCents": 450,
+      "priceCents": 901,
+      "demand": 0
+    },
+    {
+      "case": "brownie far above",
+      "referenceCents": 180,
+      "priceCents": 100000,
+      "demand": 0
+    }
   ],
   "priceInputCases": [
-    { "text": "4", "cents": 400 },
-    { "text": "4.01", "cents": 401 },
-    { "text": "4.5", "cents": 450 },
-    { "text": "4,50", "cents": 450 },
-    { "text": "  4.50  ", "cents": 450 },
-    { "text": "0.01", "cents": 1 },
-    { "text": "1000", "cents": 100000 },
-    { "text": "1000.00", "cents": 100000 },
-    { "text": "007.10", "cents": 710 },
-    { "text": "0", "error": "InvalidPrice" },
-    { "text": "0.00", "error": "InvalidPrice" },
-    { "text": "-1", "error": "InvalidPrice" },
-    { "text": "-0.01", "error": "InvalidPrice" },
-    { "text": "4.005", "error": "InvalidPrice" },
-    { "text": "4,005", "error": "InvalidPrice" },
-    { "text": "abc", "error": "InvalidPrice" },
-    { "text": "1e2", "error": "InvalidPrice" },
-    { "text": "", "error": "InvalidPrice" },
-    { "text": "   ", "error": "InvalidPrice" },
-    { "text": "4.", "error": "InvalidPrice" },
-    { "text": ".50", "error": "InvalidPrice" },
-    { "text": "€4.50", "error": "InvalidPrice" },
-    { "text": "1,000.00", "error": "InvalidPrice" },
-    { "text": "4 50", "error": "InvalidPrice" },
-    { "text": "1000.01", "error": "InvalidPrice" },
-    { "text": "99999999999999999999", "error": "InvalidPrice" },
-    { "text": "Infinity", "error": "InvalidPrice" },
-    { "text": "NaN", "error": "InvalidPrice" }
+    {
+      "text": "4",
+      "cents": 400
+    },
+    {
+      "text": "4.01",
+      "cents": 401
+    },
+    {
+      "text": "4.5",
+      "cents": 450
+    },
+    {
+      "text": "4,50",
+      "cents": 450
+    },
+    {
+      "text": "  4.50  ",
+      "cents": 450
+    },
+    {
+      "text": "0.01",
+      "cents": 1
+    },
+    {
+      "text": "1000",
+      "cents": 100000
+    },
+    {
+      "text": "1000.00",
+      "cents": 100000
+    },
+    {
+      "text": "007.10",
+      "cents": 710
+    },
+    {
+      "text": "0",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "0.00",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "-1",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "-0.01",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "4.005",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "4,005",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "abc",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "1e2",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "   ",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "4.",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": ".50",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "€4.50",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "1,000.00",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "4 50",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "1000.01",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "99999999999999999999",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "Infinity",
+      "error": "InvalidPrice"
+    },
+    {
+      "text": "NaN",
+      "error": "InvalidPrice"
+    }
   ],
   "quantityInputCases": [
-    { "text": "1", "quantity": 1 },
-    { "text": "10", "quantity": 10 },
-    { "text": " 7 ", "quantity": 7 },
-    { "text": "007", "quantity": 7 },
-    { "text": "1000", "quantity": 1000 },
-    { "text": "0", "error": "InvalidQuantity" },
-    { "text": "-3", "error": "InvalidQuantity" },
-    { "text": "2.5", "error": "InvalidQuantity" },
-    { "text": "2,5", "error": "InvalidQuantity" },
-    { "text": "abc", "error": "InvalidQuantity" },
-    { "text": "", "error": "InvalidQuantity" },
-    { "text": "   ", "error": "InvalidQuantity" },
-    { "text": "1e3", "error": "InvalidQuantity" },
-    { "text": "1001", "error": "InvalidQuantity" },
-    { "text": "99999999999999999999", "error": "InvalidQuantity" }
+    {
+      "text": "1",
+      "quantity": 1
+    },
+    {
+      "text": "10",
+      "quantity": 10
+    },
+    {
+      "text": " 7 ",
+      "quantity": 7
+    },
+    {
+      "text": "007",
+      "quantity": 7
+    },
+    {
+      "text": "1000",
+      "quantity": 1000
+    },
+    {
+      "text": "0",
+      "error": "InvalidQuantity"
+    },
+    {
+      "text": "-3",
+      "error": "InvalidQuantity"
+    },
+    {
+      "text": "2.5",
+      "error": "InvalidQuantity"
+    },
+    {
+      "text": "2,5",
+      "error": "InvalidQuantity"
+    },
+    {
+      "text": "abc",
+      "error": "InvalidQuantity"
+    },
+    {
+      "text": "",
+      "error": "InvalidQuantity"
+    },
+    {
+      "text": "   ",
+      "error": "InvalidQuantity"
+    },
+    {
+      "text": "1e3",
+      "error": "InvalidQuantity"
+    },
+    {
+      "text": "1001",
+      "error": "InvalidQuantity"
+    },
+    {
+      "text": "99999999999999999999",
+      "error": "InvalidQuantity"
+    }
   ],
   "scenarios": [
     {
@@ -98,16 +304,30 @@
           "do": "buy",
           "product": "lemonade",
           "quantity": 10,
-          "expect": { "ok": true },
-          "state": { "cashCents": 8000, "stock": { "lemonade": 10 } }
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 8000,
+            "stock": {
+              "lemonade": 10
+            }
+          }
         },
         {
           "note": "41 more lemonades cost €82.00, more than the €80.00 left",
           "do": "buy",
           "product": "lemonade",
           "quantity": 41,
-          "expect": { "error": "NotAffordable" },
-          "state": { "cashCents": 8000, "stock": { "lemonade": 10 } }
+          "expect": {
+            "error": "NotAffordable"
+          },
+          "state": {
+            "cashCents": 8000,
+            "stock": {
+              "lemonade": 10
+            }
+          }
         }
       ]
     },
@@ -120,42 +340,70 @@
           "do": "setPrice",
           "product": "lemonade",
           "priceCents": 401,
-          "expect": { "ok": true },
-          "state": { "prices": { "lemonade": 401 } },
-          "demand": { "lemonade": 5 }
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "prices": {
+              "lemonade": 401
+            }
+          },
+          "demand": {
+            "lemonade": 5
+          }
         },
         {
           "do": "setPrice",
           "product": "lemonade",
           "priceCents": 0,
-          "expect": { "error": "InvalidPrice" },
-          "state": { "prices": { "lemonade": 401 } }
+          "expect": {
+            "error": "InvalidPrice"
+          },
+          "state": {
+            "prices": {
+              "lemonade": 401
+            }
+          }
         },
         {
           "do": "setPrice",
           "product": "lemonade",
           "priceCents": -100,
-          "expect": { "error": "InvalidPrice" }
+          "expect": {
+            "error": "InvalidPrice"
+          }
         },
         {
           "do": "setPrice",
           "product": "lemonade",
           "priceCents": -1,
-          "expect": { "error": "InvalidPrice" }
+          "expect": {
+            "error": "InvalidPrice"
+          }
         },
         {
           "do": "setPriceText",
           "product": "lemonade",
           "text": "-0.01",
-          "expect": { "error": "InvalidPrice" }
+          "expect": {
+            "error": "InvalidPrice"
+          }
         },
         {
           "do": "setPriceText",
           "product": "lemonade",
           "text": "8.01",
-          "expect": { "ok": true },
-          "state": { "prices": { "lemonade": 801 } },
-          "demand": { "lemonade": 0 }
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "prices": {
+              "lemonade": 801
+            }
+          },
+          "demand": {
+            "lemonade": 0
+          }
         }
       ]
     },
@@ -163,17 +411,28 @@
       "id": "A3",
       "title": "Reconcile a trading day",
       "catalogue": "brief",
-      "start": { "cashCents": 8000, "stock": { "lemonade": 10, "cookie": 0, "muffin": 0 } },
+      "start": {
+        "cashCents": 8000,
+        "stock": {
+          "lemonade": 10,
+          "cookie": 0,
+          "muffin": 0
+        }
+      },
       "steps": [
         {
           "do": "setPrice",
           "product": "lemonade",
           "priceCents": 400,
-          "expect": { "ok": true }
+          "expect": {
+            "ok": true
+          }
         },
         {
           "do": "trade",
-          "expect": { "ok": true },
+          "expect": {
+            "ok": true
+          },
           "day": {
             "day": 1,
             "lines": {
@@ -185,8 +444,16 @@
                 "cogsCents": 2000,
                 "grossProfitCents": 2000
               },
-              "cookie": { "demand": 10, "unitsSold": 0, "revenueCents": 0 },
-              "muffin": { "demand": 10, "unitsSold": 0, "revenueCents": 0 }
+              "cookie": {
+                "demand": 10,
+                "unitsSold": 0,
+                "revenueCents": 0
+              },
+              "muffin": {
+                "demand": 10,
+                "unitsSold": 0,
+                "revenueCents": 0
+              }
             },
             "totals": {
               "unitsSold": 10,
@@ -198,7 +465,11 @@
           },
           "state": {
             "cashCents": 12000,
-            "stock": { "lemonade": 0, "cookie": 0, "muffin": 0 },
+            "stock": {
+              "lemonade": 0,
+              "cookie": 0,
+              "muffin": 0
+            },
             "currentDay": 2,
             "daysCompleted": 1
           }
@@ -209,19 +480,53 @@
       "id": "A4",
       "title": "Stock limits sales",
       "catalogue": "brief",
-      "start": { "cashCents": 9400, "stock": { "lemonade": 3 } },
+      "start": {
+        "cashCents": 9400,
+        "stock": {
+          "lemonade": 3
+        }
+      },
       "steps": [
         {
           "do": "trade",
-          "expect": { "ok": true },
-          "day": { "lines": { "lemonade": { "demand": 10, "unitsSold": 3 } } },
-          "state": { "stock": { "lemonade": 0 }, "cashCents": 10600 }
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "lines": {
+              "lemonade": {
+                "demand": 10,
+                "unitsSold": 3
+              }
+            }
+          },
+          "state": {
+            "stock": {
+              "lemonade": 0
+            },
+            "cashCents": 10600
+          }
         },
         {
           "do": "trade",
-          "expect": { "ok": true },
-          "day": { "lines": { "lemonade": { "demand": 10, "unitsSold": 0 } } },
-          "state": { "stock": { "lemonade": 0 }, "cashCents": 10600, "currentDay": 3 }
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "lines": {
+              "lemonade": {
+                "demand": 10,
+                "unitsSold": 0
+              }
+            }
+          },
+          "state": {
+            "stock": {
+              "lemonade": 0
+            },
+            "cashCents": 10600,
+            "currentDay": 3
+          }
         }
       ]
     },
@@ -230,16 +535,49 @@
       "title": "Resume without replay",
       "catalogue": "brief",
       "steps": [
-        { "do": "buy", "product": "lemonade", "quantity": 10, "expect": { "ok": true } },
-        { "do": "buy", "product": "cookie", "quantity": 4, "expect": { "ok": true } },
-        { "do": "setPrice", "product": "lemonade", "priceCents": 650, "expect": { "ok": true } },
-        { "do": "setPrice", "product": "muffin", "priceCents": 99, "expect": { "ok": true } },
+        {
+          "do": "buy",
+          "product": "lemonade",
+          "quantity": 10,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "buy",
+          "product": "cookie",
+          "quantity": 4,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "setPrice",
+          "product": "lemonade",
+          "priceCents": 650,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "setPrice",
+          "product": "muffin",
+          "priceCents": 99,
+          "expect": {
+            "ok": true
+          }
+        },
         {
           "do": "trade",
-          "expect": { "ok": true },
+          "expect": {
+            "ok": true
+          },
           "state": {
             "cashCents": 11450,
-            "stock": { "lemonade": 5, "cookie": 0 },
+            "stock": {
+              "lemonade": 5,
+              "cookie": 0
+            },
             "currentDay": 2,
             "daysCompleted": 1
           }
@@ -247,19 +585,34 @@
         {
           "note": "Reopen the app: everything must be identical and the day must not be replayed",
           "do": "restart",
-          "expect": { "ok": true },
+          "expect": {
+            "ok": true
+          },
           "state": {
             "cashCents": 11450,
-            "stock": { "lemonade": 5, "cookie": 0, "muffin": 0 },
-            "prices": { "lemonade": 650, "cookie": 150, "muffin": 99 },
+            "stock": {
+              "lemonade": 5,
+              "cookie": 0,
+              "muffin": 0
+            },
+            "prices": {
+              "lemonade": 650,
+              "cookie": 150,
+              "muffin": 99
+            },
             "currentDay": 2,
             "daysCompleted": 1
           }
         },
         {
           "do": "restart",
-          "expect": { "ok": true },
-          "state": { "cashCents": 11450, "daysCompleted": 1 }
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 11450,
+            "daysCompleted": 1
+          }
         }
       ]
     },
@@ -268,20 +621,51 @@
       "title": "Complete and restart",
       "catalogue": "brief",
       "steps": [
-        { "do": "buy", "product": "lemonade", "quantity": 12, "expect": { "ok": true } },
-        { "do": "trade", "expect": { "ok": true } },
-        { "do": "trade", "expect": { "ok": true } },
-        { "do": "trade", "expect": { "ok": true } },
-        { "do": "trade", "expect": { "ok": true } },
+        {
+          "do": "buy",
+          "product": "lemonade",
+          "quantity": 12,
+          "expect": {
+            "ok": true
+          }
+        },
         {
           "do": "trade",
-          "expect": { "ok": true },
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
           "state": {
             "status": "completed",
             "currentDay": 5,
             "daysCompleted": 5,
             "cashCents": 12400,
-            "stock": { "lemonade": 0 }
+            "stock": {
+              "lemonade": 0
+            }
           },
           "summary": {
             "finalCashCents": 12400,
@@ -293,39 +677,70 @@
           "do": "buy",
           "product": "cookie",
           "quantity": 1,
-          "expect": { "error": "RunCompleted" }
+          "expect": {
+            "error": "RunCompleted"
+          }
         },
         {
           "do": "setPrice",
           "product": "cookie",
           "priceCents": 120,
-          "expect": { "error": "RunCompleted" }
+          "expect": {
+            "error": "RunCompleted"
+          }
         },
-        { "do": "trade", "expect": { "error": "RunCompleted" } },
+        {
+          "do": "trade",
+          "expect": {
+            "error": "RunCompleted"
+          }
+        },
         {
           "note": "The player cancels the confirmation: nothing changes",
           "do": "newRun",
           "confirm": false,
-          "expect": { "ok": true },
-          "state": { "status": "completed", "cashCents": 12400, "daysCompleted": 5 }
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "status": "completed",
+            "cashCents": 12400,
+            "daysCompleted": 5
+          }
         },
         {
           "do": "newRun",
           "confirm": true,
-          "expect": { "ok": true },
+          "expect": {
+            "ok": true
+          },
           "state": {
             "status": "in_progress",
             "cashCents": 10000,
-            "stock": { "lemonade": 0, "cookie": 0, "muffin": 0 },
-            "prices": { "lemonade": 400, "cookie": 150, "muffin": 125 },
+            "stock": {
+              "lemonade": 0,
+              "cookie": 0,
+              "muffin": 0
+            },
+            "prices": {
+              "lemonade": 400,
+              "cookie": 150,
+              "muffin": 125
+            },
             "currentDay": 1,
             "daysCompleted": 0
           }
         },
         {
           "do": "restart",
-          "expect": { "ok": true },
-          "state": { "status": "in_progress", "cashCents": 10000, "daysCompleted": 0 }
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "status": "in_progress",
+            "cashCents": 10000,
+            "daysCompleted": 0
+          }
         }
       ]
     },
@@ -333,30 +748,55 @@
       "id": "E1",
       "title": "Buy with exactly all remaining cash, then 1 cent over",
       "catalogue": "brief",
-      "start": { "cashCents": 1000 },
+      "start": {
+        "cashCents": 1000
+      },
       "steps": [
         {
           "do": "buy",
           "product": "lemonade",
           "quantity": 5,
-          "expect": { "ok": true },
-          "state": { "cashCents": 0, "stock": { "lemonade": 5 } }
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 0,
+            "stock": {
+              "lemonade": 5
+            }
+          }
         },
-        { "do": "buy", "product": "muffin", "quantity": 1, "expect": { "error": "NotAffordable" } }
+        {
+          "do": "buy",
+          "product": "muffin",
+          "quantity": 1,
+          "expect": {
+            "error": "NotAffordable"
+          }
+        }
       ]
     },
     {
       "id": "E2",
       "title": "One cent short is rejected",
       "catalogue": "brief",
-      "start": { "cashCents": 999 },
+      "start": {
+        "cashCents": 999
+      },
       "steps": [
         {
           "do": "buy",
           "product": "lemonade",
           "quantity": 5,
-          "expect": { "error": "NotAffordable" },
-          "state": { "cashCents": 999, "stock": { "lemonade": 0 } }
+          "expect": {
+            "error": "NotAffordable"
+          },
+          "state": {
+            "cashCents": 999,
+            "stock": {
+              "lemonade": 0
+            }
+          }
         }
       ]
     },
@@ -369,63 +809,88 @@
           "do": "buy",
           "product": "lemonade",
           "quantity": 0,
-          "expect": { "error": "InvalidQuantity" }
+          "expect": {
+            "error": "InvalidQuantity"
+          }
         },
         {
           "do": "buy",
           "product": "lemonade",
           "quantity": -2,
-          "expect": { "error": "InvalidQuantity" }
+          "expect": {
+            "error": "InvalidQuantity"
+          }
         },
         {
           "do": "buy",
           "product": "lemonade",
           "quantity": 2.5,
-          "expect": { "error": "InvalidQuantity" }
+          "expect": {
+            "error": "InvalidQuantity"
+          }
         },
         {
           "do": "buy",
           "product": "lemonade",
           "quantity": 9007199254740993,
-          "expect": { "error": "InvalidQuantity" }
+          "expect": {
+            "error": "InvalidQuantity"
+          }
         },
         {
           "do": "buyText",
           "product": "lemonade",
           "text": "2.5",
-          "expect": { "error": "InvalidQuantity" }
+          "expect": {
+            "error": "InvalidQuantity"
+          }
         },
         {
           "do": "buyText",
           "product": "lemonade",
           "text": "abc",
-          "expect": { "error": "InvalidQuantity" }
+          "expect": {
+            "error": "InvalidQuantity"
+          }
         },
         {
           "do": "buyText",
           "product": "lemonade",
           "text": "  ",
-          "expect": { "error": "InvalidQuantity" }
+          "expect": {
+            "error": "InvalidQuantity"
+          }
         },
         {
           "do": "buyText",
           "product": "lemonade",
           "text": "99999999999999999999",
-          "expect": { "error": "InvalidQuantity" }
+          "expect": {
+            "error": "InvalidQuantity"
+          }
         },
         {
           "note": "1000 units is a valid quantity but costs €2,000.00",
           "do": "buyText",
           "product": "lemonade",
           "text": "1000",
-          "expect": { "error": "NotAffordable" }
+          "expect": {
+            "error": "NotAffordable"
+          }
         },
         {
           "do": "buyText",
           "product": "lemonade",
           "text": " 3 ",
-          "expect": { "ok": true },
-          "state": { "cashCents": 9400, "stock": { "lemonade": 3 } }
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 9400,
+            "stock": {
+              "lemonade": 3
+            }
+          }
         }
       ]
     },
@@ -438,33 +903,51 @@
           "do": "setPriceText",
           "product": "cookie",
           "text": "1.555",
-          "expect": { "error": "InvalidPrice" }
+          "expect": {
+            "error": "InvalidPrice"
+          }
         },
         {
           "do": "setPriceText",
           "product": "cookie",
           "text": " 1,75 ",
-          "expect": { "ok": true },
-          "state": { "prices": { "cookie": 175 } }
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "prices": {
+              "cookie": 175
+            }
+          }
         },
         {
           "do": "setPriceText",
           "product": "cookie",
           "text": "abc",
-          "expect": { "error": "InvalidPrice" }
+          "expect": {
+            "error": "InvalidPrice"
+          }
         },
         {
           "do": "setPriceText",
           "product": "cookie",
           "text": "5000",
-          "expect": { "error": "InvalidPrice" }
+          "expect": {
+            "error": "InvalidPrice"
+          }
         },
         {
           "do": "setPrice",
           "product": "cookie",
           "priceCents": 2.5,
-          "expect": { "error": "InvalidPrice" },
-          "state": { "prices": { "cookie": 175 } }
+          "expect": {
+            "error": "InvalidPrice"
+          },
+          "state": {
+            "prices": {
+              "cookie": 175
+            }
+          }
         }
       ]
     },
@@ -472,21 +955,68 @@
       "id": "E5",
       "title": "Demand boundary at exactly twice an odd reference (€1.50)",
       "catalogue": "brief",
-      "start": { "stock": { "cookie": 8 }, "cashCents": 9200 },
-      "steps": [
-        { "do": "setPrice", "product": "cookie", "priceCents": 300, "expect": { "ok": true } },
-        {
-          "do": "trade",
-          "expect": { "ok": true },
-          "day": { "lines": { "cookie": { "demand": 5, "unitsSold": 5, "revenueCents": 1500 } } },
-          "state": { "stock": { "cookie": 3 } }
+      "start": {
+        "stock": {
+          "cookie": 8
         },
-        { "do": "setPrice", "product": "cookie", "priceCents": 301, "expect": { "ok": true } },
+        "cashCents": 9200
+      },
+      "steps": [
+        {
+          "do": "setPrice",
+          "product": "cookie",
+          "priceCents": 300,
+          "expect": {
+            "ok": true
+          }
+        },
         {
           "do": "trade",
-          "expect": { "ok": true },
-          "day": { "lines": { "cookie": { "demand": 0, "unitsSold": 0, "revenueCents": 0 } } },
-          "state": { "stock": { "cookie": 3 } }
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "lines": {
+              "cookie": {
+                "demand": 5,
+                "unitsSold": 5,
+                "revenueCents": 1500
+              }
+            }
+          },
+          "state": {
+            "stock": {
+              "cookie": 3
+            }
+          }
+        },
+        {
+          "do": "setPrice",
+          "product": "cookie",
+          "priceCents": 301,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "lines": {
+              "cookie": {
+                "demand": 0,
+                "unitsSold": 0,
+                "revenueCents": 0
+              }
+            }
+          },
+          "state": {
+            "stock": {
+              "cookie": 3
+            }
+          }
         }
       ]
     },
@@ -495,14 +1025,51 @@
       "title": "Multi-product day: one sells out, one has leftovers, one is priced out",
       "catalogue": "brief",
       "steps": [
-        { "do": "buy", "product": "lemonade", "quantity": 4, "expect": { "ok": true } },
-        { "do": "buy", "product": "cookie", "quantity": 20, "expect": { "ok": true } },
-        { "do": "buy", "product": "muffin", "quantity": 6, "expect": { "ok": true } },
-        { "do": "setPrice", "product": "cookie", "priceCents": 200, "expect": { "ok": true } },
-        { "do": "setPrice", "product": "muffin", "priceCents": 251, "expect": { "ok": true } },
+        {
+          "do": "buy",
+          "product": "lemonade",
+          "quantity": 4,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "buy",
+          "product": "cookie",
+          "quantity": 20,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "buy",
+          "product": "muffin",
+          "quantity": 6,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "setPrice",
+          "product": "cookie",
+          "priceCents": 200,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "setPrice",
+          "product": "muffin",
+          "priceCents": 251,
+          "expect": {
+            "ok": true
+          }
+        },
         {
           "do": "trade",
-          "expect": { "ok": true },
+          "expect": {
+            "ok": true
+          },
           "day": {
             "lines": {
               "lemonade": {
@@ -535,7 +1102,14 @@
             },
             "cashAfterCents": 9500
           },
-          "state": { "cashCents": 9500, "stock": { "lemonade": 0, "cookie": 15, "muffin": 6 } }
+          "state": {
+            "cashCents": 9500,
+            "stock": {
+              "lemonade": 0,
+              "cookie": 15,
+              "muffin": 6
+            }
+          }
         }
       ]
     },
@@ -546,13 +1120,24 @@
       "steps": [
         {
           "do": "trade",
-          "expect": { "ok": true },
+          "expect": {
+            "ok": true
+          },
           "day": {
             "day": 1,
-            "totals": { "unitsSold": 0, "revenueCents": 0, "cogsCents": 0, "grossProfitCents": 0 },
+            "totals": {
+              "unitsSold": 0,
+              "revenueCents": 0,
+              "cogsCents": 0,
+              "grossProfitCents": 0
+            },
             "cashAfterCents": 10000
           },
-          "state": { "currentDay": 2, "daysCompleted": 1, "cashCents": 10000 }
+          "state": {
+            "currentDay": 2,
+            "daysCompleted": 1,
+            "cashCents": 10000
+          }
         }
       ]
     },
@@ -561,18 +1146,51 @@
       "title": "Unsold stock carries forward and sells on a later day",
       "catalogue": "brew-and-byte",
       "steps": [
-        { "do": "buy", "product": "toastie", "quantity": 15, "expect": { "ok": true } },
         {
-          "do": "trade",
-          "expect": { "ok": true },
-          "day": { "lines": { "toastie": { "unitsSold": 10 } } },
-          "state": { "stock": { "toastie": 5 } }
+          "do": "buy",
+          "product": "toastie",
+          "quantity": 15,
+          "expect": {
+            "ok": true
+          }
         },
         {
           "do": "trade",
-          "expect": { "ok": true },
-          "day": { "lines": { "toastie": { "unitsSold": 5, "revenueCents": 2250 } } },
-          "state": { "stock": { "toastie": 0 }, "cashCents": 13750 }
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "lines": {
+              "toastie": {
+                "unitsSold": 10
+              }
+            }
+          },
+          "state": {
+            "stock": {
+              "toastie": 5
+            }
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "lines": {
+              "toastie": {
+                "unitsSold": 5,
+                "revenueCents": 2250
+              }
+            }
+          },
+          "state": {
+            "stock": {
+              "toastie": 0
+            },
+            "cashCents": 13750
+          }
         }
       ]
     },
@@ -581,16 +1199,46 @@
       "title": "Priced above twice the reference: no revenue, stock kept",
       "catalogue": "brew-and-byte",
       "steps": [
-        { "do": "buy", "product": "brownie", "quantity": 10, "expect": { "ok": true } },
-        { "do": "setPriceText", "product": "brownie", "text": "3.61", "expect": { "ok": true } },
+        {
+          "do": "buy",
+          "product": "brownie",
+          "quantity": 10,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "setPriceText",
+          "product": "brownie",
+          "text": "3.61",
+          "expect": {
+            "ok": true
+          }
+        },
         {
           "do": "trade",
-          "expect": { "ok": true },
-          "day": {
-            "lines": { "brownie": { "demand": 0, "unitsSold": 0, "revenueCents": 0 } },
-            "totals": { "revenueCents": 0, "grossProfitCents": 0 }
+          "expect": {
+            "ok": true
           },
-          "state": { "stock": { "brownie": 10 }, "cashCents": 9300 }
+          "day": {
+            "lines": {
+              "brownie": {
+                "demand": 0,
+                "unitsSold": 0,
+                "revenueCents": 0
+              }
+            },
+            "totals": {
+              "revenueCents": 0,
+              "grossProfitCents": 0
+            }
+          },
+          "state": {
+            "stock": {
+              "brownie": 10
+            },
+            "cashCents": 9300
+          }
         }
       ]
     },
@@ -603,13 +1251,17 @@
           "do": "buy",
           "product": "espresso",
           "quantity": 1,
-          "expect": { "error": "UnknownProduct" }
+          "expect": {
+            "error": "UnknownProduct"
+          }
         },
         {
           "do": "setPrice",
           "product": "espresso",
           "priceCents": 250,
-          "expect": { "error": "UnknownProduct" }
+          "expect": {
+            "error": "UnknownProduct"
+          }
         }
       ]
     },
@@ -633,18 +1285,38 @@
         "Check: cash change 12660 = sum of GP 12800 - cost of unsold stock 140."
       ],
       "steps": [
-        { "do": "buy", "product": "flat-white", "quantity": 20, "expect": { "ok": true } },
-        { "do": "buy", "product": "toastie", "quantity": 10, "expect": { "ok": true } },
+        {
+          "do": "buy",
+          "product": "flat-white",
+          "quantity": 20,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "buy",
+          "product": "toastie",
+          "quantity": 10,
+          "expect": {
+            "ok": true
+          }
+        },
         {
           "do": "buy",
           "product": "brownie",
           "quantity": 15,
-          "expect": { "ok": true },
-          "state": { "cashCents": 4550 }
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 4550
+          }
         },
         {
           "do": "trade",
-          "expect": { "ok": true },
+          "expect": {
+            "ok": true
+          },
           "day": {
             "day": 1,
             "totals": {
@@ -655,20 +1327,46 @@
             },
             "cashAfterCents": 13650
           },
-          "state": { "stock": { "flat-white": 10, "toastie": 0, "brownie": 5 } }
+          "state": {
+            "stock": {
+              "flat-white": 10,
+              "toastie": 0,
+              "brownie": 5
+            }
+          }
         },
-        { "do": "setPriceText", "product": "flat-white", "text": "4.00", "expect": { "ok": true } },
-        { "do": "setPriceText", "product": "brownie", "text": "3,60", "expect": { "ok": true } },
+        {
+          "do": "setPriceText",
+          "product": "flat-white",
+          "text": "4.00",
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "setPriceText",
+          "product": "brownie",
+          "text": "3,60",
+          "expect": {
+            "ok": true
+          }
+        },
         {
           "do": "buy",
           "product": "toastie",
           "quantity": 5,
-          "expect": { "ok": true },
-          "state": { "cashCents": 12650 }
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 12650
+          }
         },
         {
           "do": "trade",
-          "expect": { "ok": true },
+          "expect": {
+            "ok": true
+          },
           "day": {
             "day": 2,
             "totals": {
@@ -679,13 +1377,35 @@
             },
             "cashAfterCents": 18700
           },
-          "state": { "stock": { "flat-white": 5, "toastie": 0, "brownie": 0 } }
+          "state": {
+            "stock": {
+              "flat-white": 5,
+              "toastie": 0,
+              "brownie": 0
+            }
+          }
         },
-        { "do": "setPrice", "product": "toastie", "priceCents": 901, "expect": { "ok": true } },
-        { "do": "buy", "product": "toastie", "quantity": 4, "expect": { "ok": true } },
+        {
+          "do": "setPrice",
+          "product": "toastie",
+          "priceCents": 901,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "buy",
+          "product": "toastie",
+          "quantity": 4,
+          "expect": {
+            "ok": true
+          }
+        },
         {
           "do": "trade",
-          "expect": { "ok": true },
+          "expect": {
+            "ok": true
+          },
           "day": {
             "day": 3,
             "totals": {
@@ -699,26 +1419,59 @@
         },
         {
           "do": "trade",
-          "expect": { "ok": true },
+          "expect": {
+            "ok": true
+          },
           "day": {
             "day": 4,
-            "totals": { "unitsSold": 0, "revenueCents": 0, "cogsCents": 0, "grossProfitCents": 0 },
+            "totals": {
+              "unitsSold": 0,
+              "revenueCents": 0,
+              "cogsCents": 0,
+              "grossProfitCents": 0
+            },
             "cashAfterCents": 19900
           },
-          "state": { "stock": { "flat-white": 0, "toastie": 4, "brownie": 0 } }
+          "state": {
+            "stock": {
+              "flat-white": 0,
+              "toastie": 4,
+              "brownie": 0
+            }
+          }
         },
-        { "do": "setPrice", "product": "toastie", "priceCents": 450, "expect": { "ok": true } },
-        { "do": "setPrice", "product": "brownie", "priceCents": 180, "expect": { "ok": true } },
+        {
+          "do": "setPrice",
+          "product": "toastie",
+          "priceCents": 450,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "setPrice",
+          "product": "brownie",
+          "priceCents": 180,
+          "expect": {
+            "ok": true
+          }
+        },
         {
           "do": "buy",
           "product": "brownie",
           "quantity": 12,
-          "expect": { "ok": true },
-          "state": { "cashCents": 19060 }
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 19060
+          }
         },
         {
           "do": "trade",
-          "expect": { "ok": true },
+          "expect": {
+            "ok": true
+          },
           "day": {
             "day": 5,
             "totals": {
@@ -734,7 +1487,11 @@
             "currentDay": 5,
             "daysCompleted": 5,
             "cashCents": 22660,
-            "stock": { "flat-white": 0, "toastie": 0, "brownie": 2 }
+            "stock": {
+              "flat-white": 0,
+              "toastie": 0,
+              "brownie": 2
+            }
           },
           "summary": {
             "finalCashCents": 22660,
@@ -742,8 +1499,20 @@
             "gainLossCents": 12800
           }
         },
-        { "do": "buy", "product": "brownie", "quantity": 1, "expect": { "error": "RunCompleted" } },
-        { "do": "trade", "expect": { "error": "RunCompleted" } }
+        {
+          "do": "buy",
+          "product": "brownie",
+          "quantity": 1,
+          "expect": {
+            "error": "RunCompleted"
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "error": "RunCompleted"
+          }
+        }
       ]
     },
     {
@@ -751,20 +1520,514 @@
       "title": "A run that loses money reports a negative result",
       "catalogue": "brew-and-byte",
       "steps": [
-        { "do": "buy", "product": "toastie", "quantity": 40, "expect": { "ok": true } },
-        { "do": "setPrice", "product": "toastie", "priceCents": 100, "expect": { "ok": true } },
-        { "do": "trade", "expect": { "ok": true } },
-        { "do": "trade", "expect": { "ok": true } },
-        { "do": "trade", "expect": { "ok": true } },
-        { "do": "trade", "expect": { "ok": true } },
+        {
+          "do": "buy",
+          "product": "toastie",
+          "quantity": 40,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "setPrice",
+          "product": "toastie",
+          "priceCents": 100,
+          "expect": {
+            "ok": true
+          }
+        },
         {
           "do": "trade",
-          "expect": { "ok": true },
-          "state": { "status": "completed", "cashCents": 6000, "stock": { "toastie": 0 } },
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "status": "completed",
+            "cashCents": 6000,
+            "stock": {
+              "toastie": 0
+            }
+          },
           "summary": {
             "finalCashCents": 6000,
             "remainingStockValueCents": 0,
             "gainLossCents": -4000
+          }
+        }
+      ]
+    },
+    {
+      "id": "E13",
+      "title": "A week of campus events, worked out by hand",
+      "catalogue": "brew-and-byte",
+      "start": {
+        "events": ["exam-week", "rainy-day", "ordinary-day", "open-day", "big-match"]
+      },
+      "arithmetic": [
+        "Events scale the usual 10/5/0 customers by 150% or 50%, rounding half a customer up.",
+        "Buy 20 of each: 2400 + 4000 + 1400 = 7800, cash 2200.",
+        "Day 1, exam week (flat white and brownie x1.5): demand FW 15, T 10, B 15. Revenue 4200 + 4500 + 2700 = 11400, COGS 1800 + 2000 + 1050 = 4850, GP 6550. Cash 13600. Stock FW 5, T 10, B 5.",
+        "Day 2, rainy day (toastie x1.5): toastie demand 15 but only 10 in stock. Revenue 1400 + 4500 + 900 = 6800, COGS 600 + 2000 + 350 = 2950, GP 3850. Cash 20400. Shelf empty.",
+        "Day 3, ordinary day: nothing to sell. GP 0.",
+        "Day 4, open day (everything x1.5): buy 10 FW (1200), cash 19200. FW at 3.00 is above the 2.80 reference, so 5 customers x1.5 = 7.5, rounded up to 8. Revenue 2400, COGS 960, GP 1440. Cash 21600. FW 2 left.",
+        "Day 5, big match (everything x0.5): FW at 3.00 gives 5 x 0.5 = 2.5, rounded up to 3, but only 2 in stock. Revenue 600, COGS 240, GP 360. Cash 22200.",
+        "Final: gain = 22200 + 0 - 10000 = 12200 = 6550 + 3850 + 0 + 1440 + 360."
+      ],
+      "steps": [
+        {
+          "do": "buy",
+          "product": "flat-white",
+          "quantity": 20,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "buy",
+          "product": "toastie",
+          "quantity": 20,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "buy",
+          "product": "brownie",
+          "quantity": 20,
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 2200
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "day": 1,
+            "eventId": "exam-week",
+            "lines": {
+              "flat-white": {
+                "demand": 15,
+                "unitsSold": 15
+              },
+              "toastie": {
+                "demand": 10,
+                "unitsSold": 10
+              },
+              "brownie": {
+                "demand": 15,
+                "unitsSold": 15
+              }
+            },
+            "totals": {
+              "unitsSold": 40,
+              "revenueCents": 11400,
+              "cogsCents": 4850,
+              "grossProfitCents": 6550
+            },
+            "cashAfterCents": 13600
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "day": 2,
+            "eventId": "rainy-day",
+            "lines": {
+              "toastie": {
+                "demand": 15,
+                "unitsSold": 10
+              }
+            },
+            "totals": {
+              "revenueCents": 6800,
+              "grossProfitCents": 3850
+            },
+            "cashAfterCents": 20400
+          },
+          "state": {
+            "stock": {
+              "flat-white": 0,
+              "toastie": 0,
+              "brownie": 0
+            }
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "day": 3,
+            "eventId": "ordinary-day",
+            "totals": {
+              "unitsSold": 0
+            }
+          }
+        },
+        {
+          "do": "buy",
+          "product": "flat-white",
+          "quantity": 10,
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 19200
+          }
+        },
+        {
+          "do": "setPrice",
+          "product": "flat-white",
+          "priceCents": 300,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "day": 4,
+            "eventId": "open-day",
+            "lines": {
+              "flat-white": {
+                "demand": 8,
+                "unitsSold": 8,
+                "revenueCents": 2400
+              }
+            },
+            "totals": {
+              "grossProfitCents": 1440
+            }
+          },
+          "state": {
+            "cashCents": 21600,
+            "stock": {
+              "flat-white": 2
+            }
+          }
+        },
+        {
+          "do": "restart",
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 21600,
+            "currentDay": 5
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "day": 5,
+            "eventId": "big-match",
+            "lines": {
+              "flat-white": {
+                "demand": 3,
+                "unitsSold": 2,
+                "revenueCents": 600
+              }
+            },
+            "totals": {
+              "grossProfitCents": 360
+            }
+          },
+          "state": {
+            "status": "completed",
+            "cashCents": 22200
+          },
+          "summary": {
+            "finalCashCents": 22200,
+            "remainingStockValueCents": 0,
+            "gainLossCents": 12200
+          }
+        }
+      ]
+    },
+    {
+      "id": "E14",
+      "title": "An event only changes the items it names",
+      "catalogue": "brew-and-byte",
+      "start": {
+        "events": ["bake-sale", "ordinary-day", "ordinary-day", "ordinary-day", "ordinary-day"]
+      },
+      "steps": [
+        {
+          "do": "buy",
+          "product": "brownie",
+          "quantity": 10,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "buy",
+          "product": "toastie",
+          "quantity": 10,
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 7300
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "eventId": "bake-sale",
+            "lines": {
+              "brownie": {
+                "demand": 5,
+                "unitsSold": 5,
+                "revenueCents": 900
+              },
+              "toastie": {
+                "demand": 10,
+                "unitsSold": 10,
+                "revenueCents": 4500
+              }
+            }
+          },
+          "state": {
+            "cashCents": 12700,
+            "stock": {
+              "brownie": 5,
+              "toastie": 0
+            }
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "eventId": "ordinary-day",
+            "lines": {
+              "brownie": {
+                "demand": 10,
+                "unitsSold": 5
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "E15",
+      "title": "Upgrades and campus events together, worked out by hand",
+      "catalogue": "brew-and-byte",
+      "start": {
+        "events": ["exam-week", "ordinary-day", "ordinary-day", "ordinary-day", "ordinary-day"]
+      },
+      "arithmetic": [
+        "Start 10000. Buy Student Loyalty Program (1500) and Supplier Partnership (2500): cash 6000.",
+        "Supplier rate: flat white 120 x 85% = 102. Buy 20 flat whites: 2040, cash 3960, all 20 discounted.",
+        "Day 1, exam week: flat white 10 x 1.5 = 15, + 2 loyalty = 17 customers. Sell 17: revenue 4760, COGS 17 x 102 = 1734, GP 3026. Cash 8720. 3 left.",
+        "Toastie and brownie have no stock, so they sell nothing even though customers come.",
+        "Day 2: buy Go Viral (2000), cash 6720. Flat white 10 + 2 + 5 = 17 customers, only 3 in stock: revenue 840, COGS 306, GP 534. Cash 7560.",
+        "Days 3 to 5: nothing to sell.",
+        "Final: gain = 7560 + 0 - 10000 = -2440 = gross profit 3026 + 534 minus upgrade spending 6000.",
+        "Upgrades are spending: they cost cash, so they lower the result unless they bring in more profit than they cost."
+      ],
+      "steps": [
+        {
+          "do": "buyUpgrade",
+          "upgrade": "loyalty-program",
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 8500
+          }
+        },
+        {
+          "do": "buyUpgrade",
+          "upgrade": "loyalty-program",
+          "expect": {
+            "error": "UpgradeAlreadyPurchased"
+          }
+        },
+        {
+          "do": "buyUpgrade",
+          "upgrade": "time-machine",
+          "expect": {
+            "error": "UnknownUpgrade"
+          }
+        },
+        {
+          "do": "buyUpgrade",
+          "upgrade": "supplier-partnership",
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 6000
+          }
+        },
+        {
+          "do": "buy",
+          "product": "flat-white",
+          "quantity": 20,
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 3960
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "day": 1,
+            "eventId": "exam-week",
+            "lines": {
+              "flat-white": {
+                "demand": 17,
+                "unitsSold": 17,
+                "discountedUnitsSold": 17,
+                "revenueCents": 4760,
+                "cogsCents": 1734,
+                "grossProfitCents": 3026
+              },
+              "toastie": {
+                "demand": 12,
+                "unitsSold": 0
+              }
+            },
+            "cashAfterCents": 8720
+          },
+          "state": {
+            "stock": {
+              "flat-white": 3
+            }
+          }
+        },
+        {
+          "do": "restart",
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 8720,
+            "currentDay": 2
+          }
+        },
+        {
+          "do": "buyUpgrade",
+          "upgrade": "go-viral",
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 6720
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "day": 2,
+            "lines": {
+              "flat-white": {
+                "demand": 17,
+                "unitsSold": 3,
+                "revenueCents": 840,
+                "cogsCents": 306,
+                "grossProfitCents": 534
+              }
+            },
+            "cashAfterCents": 7560
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "day": 3,
+            "lines": {
+              "flat-white": {
+                "demand": 12,
+                "unitsSold": 0
+              }
+            }
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "status": "completed",
+            "cashCents": 7560
+          },
+          "summary": {
+            "finalCashCents": 7560,
+            "remainingStockValueCents": 0,
+            "gainLossCents": -2440
+          }
+        },
+        {
+          "do": "buyUpgrade",
+          "upgrade": "go-viral",
+          "expect": {
+            "error": "RunCompleted"
           }
         }
       ]
