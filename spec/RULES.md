@@ -80,6 +80,14 @@ The comparison is done exactly in cents. With a €4.00 reference: €4.00 → 1
 - The final results show: **final cash**, **remaining stock valued at unit cost**, and the **overall gain or loss** = final cash + remaining stock at cost − €100.00.
 - Because buying stock just swaps cash for stock of the same value, the overall gain or loss always equals the sum of the five days' gross profit. Your cash alone changed by that amount minus the cost of the stock still on the shelf.
 
+## High scores
+
+- When day 5 is traded, the run's **overall gain or loss** becomes its score.
+- The game keeps the **best five scores across all runs**, best first, each with the **date** and an **Events** or **Classic** tag.
+- An equal score goes **below** the older one. A score outside the top five isn't added.
+- Each run is recorded **once**, at the moment it finishes. Reloading never adds it again.
+- **New run** keeps the high scores. **Clear high scores** removes them all, after a confirming second click.
+
 ## Saving and resuming
 
 - Every accepted purchase and price change is saved straight away. Each traded day is saved together with the new cash, stock and day in one single write.

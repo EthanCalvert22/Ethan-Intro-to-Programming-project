@@ -61,7 +61,9 @@ function howToPlay(): HTMLElement {
         "Read the campus news: events like exam week change how many customers come. You can see tomorrow's too, so stock up early.",
       ]),
       el("li", {}, ["Press Open for the day to trade. Your till receipt shows what sold."]),
-      el("li", {}, ["Repeat for five days, then see your final results."]),
+      el("li", {}, [
+        "Repeat for five days, then see your final results. Your best five runs go on the high scores.",
+      ]),
     ]),
     el("p", { class: "hint" }, [
       "Your café is saved in this browser after every change, so you can leave and come back between days.",
