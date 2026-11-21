@@ -34,6 +34,16 @@ function describeWriteFailure(error: unknown): string {
   return "Your browser is not letting this page save.";
 }
 
+/** Writes one value, turning a browser refusal into a plain explanation instead of a crash. */
+export function writeItem(storage: KeyValueStorage, key: string, value: string): SaveResult {
+  try {
+    storage.setItem(key, value);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, problem: describeWriteFailure(error) };
+  }
+}
+
 export class RunStore {
   constructor(private readonly storage: KeyValueStorage) {}
 
@@ -68,12 +78,7 @@ export class RunStore {
   }
 
   private write(key: string, value: string): SaveResult {
-    try {
-      this.storage.setItem(key, value);
-      return { ok: true };
-    } catch (error) {
-      return { ok: false, problem: describeWriteFailure(error) };
-    }
+    return writeItem(this.storage, key, value);
   }
 }
 
