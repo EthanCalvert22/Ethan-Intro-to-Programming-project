@@ -48,6 +48,7 @@ describe("newRun (CT01 starting state)", () => {
       stock: { "flat-white": 0, toastie: 0, brownie: 0 },
       prices: { "flat-white": 280, toastie: 450, brownie: 180 },
       history: [],
+      purchasedUpgrades: [],
     });
     expect(STARTING_CASH_CENTS).toBe(10000);
     expect(RUN_LENGTH_DAYS).toBe(5);
