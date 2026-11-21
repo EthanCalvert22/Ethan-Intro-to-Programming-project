@@ -1,4 +1,3 @@
-
 import { describe, expect, it } from "vitest";
 import { newRun } from "../../src/domain/run";
 import { buyUpgrade } from "../../src/domain/upgrades";
@@ -13,9 +12,7 @@ describe("Upgrades Shop", () => {
 
     if (result.ok) {
       expect(result.value.cashCents).toBe(8500);
-      expect(result.value.purchasedUpgrades).toContain(
-        "loyalty-program",
-      );
+      expect(result.value.purchasedUpgrades).toContain("loyalty-program");
     }
   });
 
@@ -26,11 +23,7 @@ describe("Upgrades Shop", () => {
     expect(first.ok).toBe(true);
 
     if (first.ok) {
-      const second = buyUpgrade(
-        first.value,
-        "loyalty-program",
-      );
-
+      const second = buyUpgrade(first.value, "loyalty-program");
       expect(second.ok).toBe(false);
     }
   });
