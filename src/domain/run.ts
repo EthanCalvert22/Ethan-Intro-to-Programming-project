@@ -15,6 +15,7 @@ import {
   RUN_LENGTH_DAYS,
   STARTING_CASH_CENTS,
 } from "./rules";
+import { hasSupplierDiscount, orderUnitCost, supplierUnitCost } from "./upgrades";
 
 /*
  * The rulebook. Every function here is pure: it takes a run and returns a new run
@@ -31,6 +32,7 @@ export type PriceList = Readonly<Record<string, number>>;
 
 export interface DayLine {
   readonly productId: string;
+  readonly discountedUnitsSold?: number;
   readonly priceCents: number;
   readonly demand: number;
   readonly unitsSold: number;
@@ -65,6 +67,8 @@ export interface Run {
   readonly currentDay: number;
   readonly cashCents: number;
   readonly stock: Shelf;
+  /** How many of the units still on the shelf were bought at the supplier rate. */
+  readonly discountedStock?: Shelf;
   readonly prices: PriceList;
   readonly history: readonly DayResult[];
   readonly purchasedUpgrades: readonly string[];
@@ -133,7 +137,7 @@ export function buy(
   if (quantity > MAX_ORDER_QUANTITY) {
     return refuse(invalidQuantity("tooMany"));
   }
-  const costCents = quantity * product.unitCostCents;
+  const costCents = quantity * orderUnitCost(run, product.unitCostCents);
   if (costCents > run.cashCents) {
     return refuse(notAffordable(costCents, run.cashCents));
   }
@@ -141,6 +145,12 @@ export function buy(
     ...run,
     cashCents: run.cashCents - costCents,
     stock: { ...run.stock, [productId]: stockOf(run, productId) + quantity },
+    ...(hasSupplierDiscount(run) && {
+      discountedStock: {
+        ...run.discountedStock,
+        [productId]: (run.discountedStock?.[productId] ?? 0) + quantity,
+      },
+    }),
   });
 }
 
@@ -175,10 +185,15 @@ function tradeLine(run: Run, product: Product): DayLine {
   const wanted = demandForDay(run, run.currentDay, priceCents, product.referencePriceCents);
   const unitsSold = Math.min(wanted, stockOf(run, product.id));
   const revenueCents = unitsSold * priceCents;
+  // Sell the older, full-price stock first.
+  const discounted = run.discountedStock?.[product.id] ?? 0;
+  const fullPriceStock = stockOf(run, product.id) - discounted;
+  const discountedUnitsSold = Math.max(0, unitsSold - fullPriceStock);
   // The stock was paid for when it was bought; COGS is reported, not taken from cash again (CT R4).
-  const cogsCents = unitsSold * product.unitCostCents;
+  const cogsCents = inventoryCostCents(product, unitsSold, discountedUnitsSold);
   return {
     productId: product.id,
+    ...(discountedUnitsSold > 0 && { discountedUnitsSold }),
     priceCents,
     demand: wanted,
     unitsSold,
@@ -186,6 +201,18 @@ function tradeLine(run: Run, product: Product): DayLine {
     cogsCents,
     grossProfitCents: revenueCents - cogsCents,
   };
+}
+
+/** Actual cost of a mix of stock bought before and after the partnership. */
+export function inventoryCostCents(
+  product: Product,
+  units: number,
+  discountedUnits: number,
+): number {
+  return (
+    (units - discountedUnits) * product.unitCostCents +
+    discountedUnits * supplierUnitCost(product.unitCostCents)
+  );
 }
 
 function addUp(lines: readonly DayLine[]): DayTotals {
@@ -228,6 +255,14 @@ export function tradeDay(run: Run, catalogue: Catalogue): Outcome<Run> {
     currentDay: isLastDay ? run.currentDay : run.currentDay + 1,
     cashCents: cashAfterCents,
     stock: stockAfter,
+    ...(run.discountedStock !== undefined && {
+      discountedStock: Object.fromEntries(
+        lines.map((line) => [
+          line.productId,
+          (run.discountedStock?.[line.productId] ?? 0) - (line.discountedUnitsSold ?? 0),
+        ]),
+      ),
+    }),
     history: [...run.history, record],
   });
 }
@@ -235,7 +270,9 @@ export function tradeDay(run: Run, catalogue: Catalogue): Outcome<Run> {
 /** The final picture (CT05): cash, stock left at what it cost, and the gain or loss on €100. */
 export function summary(run: Run, catalogue: Catalogue): FinalSummary {
   const remainingStockValueCents = catalogue.reduce(
-    (total, product) => total + stockOf(run, product.id) * product.unitCostCents,
+    (total, product) =>
+      total +
+      inventoryCostCents(product, stockOf(run, product.id), run.discountedStock?.[product.id] ?? 0),
     0,
   );
   return {

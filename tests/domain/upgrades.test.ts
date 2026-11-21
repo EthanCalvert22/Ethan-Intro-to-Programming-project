@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Outcome } from "../../src/domain/result";
-import { buy, newRun, setPrice, tradeDay } from "../../src/domain/run";
+import { buy, newRun, setPrice, summary, tradeDay } from "../../src/domain/run";
 import { buyUpgrade } from "../../src/domain/upgrades";
 import { cafe } from "../helpers";
 
@@ -81,5 +81,41 @@ describe("Upgrades Shop", () => {
       ok: false,
       error: { kind: "RunCompleted" },
     });
+  });
+
+  it("charges the supplier rate on future orders and values mixed stock at actual cost", () => {
+    let run = accepted(buy(newRun(cafe), cafe, "toastie", 4));
+    run = accepted(buyUpgrade(run, "supplier-partnership"));
+    expect(run.cashCents).toBe(6700);
+    expect(summary(run, cafe).remainingStockValueCents).toBe(800);
+    run = accepted(buy(run, cafe, "toastie", 9));
+    expect(run.cashCents).toBe(5170);
+    run = accepted(tradeDay(run, cafe));
+    expect(run.history[0]?.lines[1]).toMatchObject({
+      demand: 10,
+      unitsSold: 10,
+      discountedUnitsSold: 6,
+      cogsCents: 1820,
+      grossProfitCents: 2680,
+    });
+    expect(summary(run, cafe)).toEqual({
+      finalCashCents: 9670,
+      remainingStockValueCents: 510,
+      gainLossCents: 180,
+    });
+    run = accepted(buy(run, cafe, "brownie", 3));
+    expect(run.cashCents).toBe(9490); // €0.595 rounds to €0.60 per Brownie.
+    run = accepted(tradeDay(run, cafe));
+    expect(run.history[1]?.lines[1]?.cogsCents).toBe(510);
+    expect(run.history[1]?.lines[2]?.cogsCents).toBe(180);
+    expect(summary(run, cafe).remainingStockValueCents).toBe(0);
+  });
+
+  it("checks affordability against the discounted price and refuses duplicate purchases", () => {
+    const upgraded = accepted(buyUpgrade(newRun(cafe), "supplier-partnership"));
+    expect(buyUpgrade(upgraded, "supplier-partnership").ok).toBe(false);
+    const run = { ...upgraded, cashCents: 170 };
+    expect(buy(run, cafe, "toastie", 2).ok).toBe(false);
+    expect(accepted(buy(run, cafe, "toastie", 1)).cashCents).toBe(0);
   });
 });

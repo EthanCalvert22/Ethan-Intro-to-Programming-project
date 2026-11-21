@@ -1,8 +1,15 @@
 import type { Catalogue, Product } from "./catalogue";
 import { demandForDay } from "./demand";
 import { MAX_PRICE_CENTS, RUN_LENGTH_DAYS } from "./rules";
-import type { DayLine, DayResult, Run, Shelf } from "./run";
-import { findUpgrade } from "./upgrades";
+import {
+  inventoryCostCents,
+  stockOf,
+  type DayLine,
+  type DayResult,
+  type Run,
+  type Shelf,
+} from "./run";
+import { findUpgrade, hasSupplierDiscount } from "./upgrades";
 
 /*
  * The promises a run must always keep. The tests check them after every action,
@@ -48,7 +55,15 @@ function checkLine(line: DayLine, product: Product, run: Run, day: number): stri
   if (line.revenueCents !== line.unitsSold * line.priceCents) {
     return `the revenue for ${product.name} does not add up.`;
   }
-  if (line.cogsCents !== line.unitsSold * product.unitCostCents) {
+  const discounted = line.discountedUnitsSold ?? 0;
+  if (
+    !isWholeAtLeast(discounted, 0) ||
+    discounted > line.unitsSold ||
+    (discounted > 0 && !hasSupplierDiscount(run, day))
+  ) {
+    return `the discounted units sold of ${product.name} are not possible.`;
+  }
+  if (line.cogsCents !== inventoryCostCents(product, line.unitsSold, discounted)) {
     return `the cost of goods sold for ${product.name} does not add up.`;
   }
   if (line.grossProfitCents !== line.revenueCents - line.cogsCents) {
@@ -135,6 +150,23 @@ function checkUpgrades(run: Run): string | null {
   return valid ? null : "Upgrade purchase days must match the purchases and game progress.";
 }
 
+function checkDiscountedStock(run: Run, catalogue: Catalogue): string | null {
+  if (run.discountedStock === undefined) {
+    return null;
+  }
+  const valid =
+    hasSupplierDiscount(run) &&
+    Object.entries(run.discountedStock).every(
+      ([id, units]) =>
+        catalogue.some((product) => product.id === id) &&
+        isWholeAtLeast(units, 0) &&
+        units <= stockOf(run, id),
+    );
+  return valid
+    ? null
+    : "Discounted stock must belong to the menu and fit within the current stock.";
+}
+
 /** Returns the first broken promise in a run, or null if the run is sound. */
 export function findRunProblem(run: Run, catalogue: Catalogue): string | null {
   if (!isWholeAtLeast(run.cashCents, 0)) {
@@ -144,6 +176,7 @@ export function findRunProblem(run: Run, catalogue: Catalogue): string | null {
     checkProgress(run) ??
     checkUpgrades(run) ??
     checkShelf(run.stock, catalogue, "Stock") ??
+    checkDiscountedStock(run, catalogue) ??
     checkEveryProductListed(
       run.prices,
       catalogue,

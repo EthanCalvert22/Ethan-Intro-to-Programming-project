@@ -88,6 +88,59 @@ describe("writeSave and readSave", () => {
     );
   });
 
+  it("round-trips discounted inventory and receipts while keeping earlier receipts at full cost", () => {
+    const before = playedRun();
+    const purchase = buyUpgrade(before, "supplier-partnership");
+    if (!purchase.ok) throw new Error(purchase.error.message);
+    const order = buy(purchase.value, cafe, "toastie", 12);
+    if (!order.ok) throw new Error(order.error.message);
+    expect(readSave(writeSave(order.value), cafe)).toEqual({ ok: true, run: order.value });
+    const traded = tradeDay(order.value, cafe);
+    if (!traded.ok) throw new Error(traded.error.message);
+    expect(traded.value.history[0]).toEqual(before.history[0]);
+    expect(traded.value.discountedStock?.toastie).toBe(4);
+    expect(readSave(writeSave(traded.value), cafe)).toEqual({ ok: true, run: traded.value });
+    expect(problemWith(writeSave({ ...traded.value, discountedStock: { toastie: 5 } }))).toContain(
+      "Discounted stock",
+    );
+    for (const [index, units] of [
+      [0, 1],
+      [1, -1],
+      [1, 11],
+    ] as const) {
+      const history = traded.value.history.map((day, position) =>
+        position === index
+          ? {
+              ...day,
+              lines: day.lines.map((line) =>
+                line.productId === "toastie" ? { ...line, discountedUnitsSold: units } : line,
+              ),
+            }
+          : day,
+      );
+      expect(problemWith(writeSave({ ...traded.value, history }))).toContain(
+        "discounted units sold",
+      );
+    }
+  });
+
+  it.each([{ toastie: 1 }, { toastie: -1 }, { unknown: 0 }])(
+    "refuses impossible discounted stock: %j",
+    (discountedStock) => {
+      const purchase = buyUpgrade(newRun(cafe), "supplier-partnership");
+      if (!purchase.ok) throw new Error(purchase.error.message);
+      expect(problemWith(writeSave({ ...purchase.value, discountedStock }))).toContain(
+        "Discounted stock",
+      );
+    },
+  );
+
+  it("refuses discounted stock without a supplier partnership", () => {
+    expect(problemWith(writeSave({ ...newRun(cafe), discountedStock: {} }))).toContain(
+      "Discounted stock",
+    );
+  });
+
   it("drops unknown extra fields instead of carrying them along", () => {
     const text = tamper((data) => ({ ...data, cheat: true }));
     const read = readSave(text, cafe);

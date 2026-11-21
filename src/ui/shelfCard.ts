@@ -4,6 +4,7 @@ import { parsePriceText, parseQuantityText } from "../domain/input";
 import { formatEuros, formatPriceForInput } from "../domain/money";
 import { MAX_ORDER_QUANTITY, MAX_PRICE_CENTS } from "../domain/rules";
 import { isComplete, priceOf, stockOf, type Run } from "../domain/run";
+import { orderUnitCost } from "../domain/upgrades";
 import { el, srOnly, svgFromMarkup } from "./dom";
 import { productIcon } from "./icons";
 
@@ -40,6 +41,7 @@ export class ShelfCard {
   private run: Run;
   private priceDraftActive = false;
 
+  private readonly productFacts = el("p", { class: "product-facts" });
   private readonly stockValue: HTMLElement;
   private readonly quantityInput: HTMLInputElement;
   private readonly quantityLess: HTMLButtonElement;
@@ -131,12 +133,7 @@ export class ShelfCard {
       [
         el("header", { class: "shelf-card-header" }, [
           el("span", { class: "product-icon" }, [svgFromMarkup(productIcon(id))]),
-          el("div", {}, [
-            el("h3", { id: `name-${id}` }, [product.name]),
-            el("p", { class: "product-facts" }, [
-              `Costs you ${formatEuros(product.unitCostCents)} · Fair price ${formatEuros(product.referencePriceCents)}`,
-            ]),
-          ]),
+          el("div", {}, [el("h3", { id: `name-${id}` }, [product.name]), this.productFacts]),
         ]),
         el("p", { class: "stock-line" }, ["On the shelf: ", this.stockValue]),
         orderForm,
@@ -183,6 +180,8 @@ export class ShelfCard {
   /** Redraws the card from the saved run. A price the player is still typing is left alone. */
   update(run: Run): void {
     this.run = run;
+    const unitCost = orderUnitCost(run, this.product.unitCostCents);
+    this.productFacts.textContent = `Costs you ${formatEuros(unitCost)} · Fair price ${formatEuros(this.product.referencePriceCents)}`;
     this.stockValue.textContent = String(stockOf(run, this.product.id));
     if (!this.priceDraftActive) {
       this.priceInput.value = formatPriceForInput(priceOf(run, this.product));
@@ -246,7 +245,7 @@ export class ShelfCard {
       this.buyButton.disabled = true;
       return;
     }
-    const costCents = parsed.value * this.product.unitCostCents;
+    const costCents = parsed.value * orderUnitCost(this.run, this.product.unitCostCents);
     const affordable = costCents <= this.run.cashCents;
     this.buyButton.disabled = !affordable;
     this.setOrderHint(

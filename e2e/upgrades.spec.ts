@@ -29,3 +29,28 @@ test("shop purchases survive reloads, affect sales, and reset with a new run", a
   await expect(viral).toBeEnabled();
   await expect(loyalty).toBeEnabled();
 });
+
+test("supplier prices, receipts and final profit use the actual inventory costs", async ({
+  page,
+}) => {
+  await freshStart(page);
+  await buy(page, "Toastie", 4);
+  await page.getByRole("button", { name: /Buy Supplier Partnership/ }).click();
+  await page.reload();
+  await expect(page.getByTestId("cash")).toHaveText("€67.00");
+  const toastie = card(page, "Toastie");
+  await expect(toastie).toContainText("Costs you €1.70");
+  await toastie.getByLabel("How many to order").fill("9");
+  await expect(toastie).toContainText("Total cost: €15.30");
+  await buy(page, "Toastie", 9);
+  await expect(page.getByTestId("cash")).toHaveText("€51.70");
+  await openForTheDay(page, 1);
+  await expect(receipt(page)).toContainText("€18.20");
+  await page.reload();
+  await expect(receipt(page)).toContainText("€18.20");
+  await toastie.getByLabel("Selling price (€)").fill("10.00");
+  for (let day = 2; day <= 5; day += 1) {
+    await openForTheDay(page, day);
+  }
+  await expect(page.getByTestId("gain-loss")).toHaveText("Overall gain of €1.80");
+});

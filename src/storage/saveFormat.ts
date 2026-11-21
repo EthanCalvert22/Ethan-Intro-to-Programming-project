@@ -52,6 +52,9 @@ function decodeLine(value: unknown, what: string): DayLine {
   }
   return {
     productId: fields.productId,
+    ...(fields.discountedUnitsSold !== undefined && {
+      discountedUnitsSold: asNumber(fields.discountedUnitsSold, `${what} discounted units sold`),
+    }),
     priceCents: asNumber(fields.priceCents, `${what} price`),
     demand: asNumber(fields.demand, `${what} demand`),
     unitsSold: asNumber(fields.unitsSold, `${what} units sold`),
@@ -117,6 +120,9 @@ function decodeRun(fields: Fields): Run {
     currentDay,
     cashCents: asNumber(fields.cashCents, "Cash"),
     stock: asNumberMap(fields.stock, "Stock"),
+    ...(fields.discountedStock !== undefined && {
+      discountedStock: asNumberMap(fields.discountedStock, "Discounted stock"),
+    }),
     prices: asNumberMap(fields.prices, "Prices"),
     history: asList(fields.history, "The history").map(decodeDay),
     purchasedUpgrades,

@@ -11,6 +11,15 @@ export interface Upgrade {
   demandBonus: number;
 }
 
+const supplierPartnership: Upgrade = {
+  id: "supplier-partnership",
+  name: "Supplier Partnership",
+  costCents: 2500,
+  description: "15% off future stock orders for the rest of this run.",
+  duration: "permanent",
+  demandBonus: 0,
+};
+
 export const upgrades: readonly Upgrade[] = [
   {
     id: "loyalty-program",
@@ -24,11 +33,25 @@ export const upgrades: readonly Upgrade[] = [
     id: "go-viral",
     name: "Go Viral",
     costCents: 2000,
-    description: "+5 demand per product for one day.",
+    description: "+5 demand per product the next time you open for trade.",
     duration: "one-day",
     demandBonus: 5,
   },
+  supplierPartnership,
 ];
+
+export function hasSupplierDiscount(run: Run, day = run.currentDay): boolean {
+  return upgradeAppliesOn(run, supplierPartnership, day);
+}
+
+/** Round the discounted price per unit to the nearest cent, with half cents rounded up. */
+export function supplierUnitCost(unitCostCents: number): number {
+  return Math.round((unitCostCents * 85) / 100);
+}
+
+export function orderUnitCost(run: Run, unitCostCents: number): number {
+  return hasSupplierDiscount(run) ? supplierUnitCost(unitCostCents) : unitCostCents;
+}
 
 export function buyUpgrade(run: Run, upgradeId: string): Outcome<Run> {
   if (run.status === "completed") {
