@@ -1,3 +1,4 @@
+
 import type { Run } from "./run";
 
 export interface Upgrade {
@@ -32,7 +33,7 @@ export function buyUpgrade(
   run: Run,
   upgradeId: string,
 ): { ok: true; value: Run } | { ok: false; message: string } {
-    if (run.status === "completed") {
+  if (run.status === "completed") {
     return { ok: false, message: "The game is already finished." };
   }
 
