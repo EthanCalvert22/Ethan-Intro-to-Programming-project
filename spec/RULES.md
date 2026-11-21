@@ -80,6 +80,19 @@ The comparison is done exactly in cents. With a €4.00 reference: €4.00 → 1
 - The final results show: **final cash**, **remaining stock valued at unit cost**, and the **overall gain or loss** = final cash + remaining stock at cost − €100.00.
 - Because buying stock just swaps cash for stock of the same value, the overall gain or loss always equals the sum of the five days' gross profit. Your cash alone changed by that amount minus the cost of the stock still on the shelf.
 
+## Upgrades shop (version 3)
+
+| Upgrade                 | Cost   | Effect                                                     |
+| ----------------------- | ------ | ---------------------------------------------------------- |
+| Student Loyalty Program | €15.00 | +2 customers per item, every day from the day it is bought |
+| Go Viral                | €20.00 | +5 customers per item, on the day it is bought only        |
+| Supplier Partnership    | €25.00 | 15% off every stock order from the day it is bought        |
+
+- Each upgrade can be bought **once per run**, only while the run is in progress, and only with enough cash.
+- **Customers = price tier (10/5/0) → the day's event (×1.5 or ×0.5) → + upgrade bonuses.** Bonuses only add to items that already have customers, so an item priced above twice its fair price still sells nothing.
+- **Supplier rate:** unit cost × 85%, rounded to the nearest cent (half a cent up). Units bought at the supplier rate are tracked; older full-price units sell first. Cost of goods sold and leftover stock use what each unit really cost.
+- **Upgrades are spending.** They reduce cash and therefore the overall gain or loss.
+
 ## High scores
 
 - When day 5 is traded, the run's **overall gain or loss** becomes its score.

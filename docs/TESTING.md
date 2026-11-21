@@ -123,13 +123,24 @@ It also runs the `demandCases`, `priceInputCases` and `quantityInputCases` table
 | The date is the player's own calendar day                                         | `app.test.ts › dates a score with the player's own calendar day` (frozen clock at 11:30 pm)         |
 | No serious accessibility issues on the board, in both themes                      | `e2e/highscores.spec.ts` (axe)                                                                      |
 
+## Upgrades shop → tests
+
+| What                                                                                               | Proven by                                                                                                |
+| -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Buying: once per run, only with enough cash, never after the run; friendly refusals                | `tests/domain/upgrades.test.ts`; acceptance `E15`                                                        |
+| Bonuses: loyalty every day, Go Viral for one day, added after the event, never to priced-out items | `upgrades.test.ts › upgrades together with campus events`; `E15`; `tests/ui/app.test.ts › upgrades shop` |
+| Supplier rate, older stock sold first, exact cost of goods and leftover stock                      | `upgrades.test.ts › charges the supplier rate…`; `E15`                                                   |
+| Money only moves as the rules say (trades by gross profit, upgrades by their cost)                 | `upgrades.test.ts` seeded property test (300 random games with events and upgrades)                      |
+| Version 3 saves round-trip; version 1 and 2 saves upgrade; broken upgrade data is refused          | `tests/storage/saveFormat.test.ts › saves with upgrades`                                                 |
+| The shop on screen, and in a real browser with a reload; no serious accessibility issues           | `app.test.ts › upgrades shop`, `› buying upgrades`; `e2e/upgrades.spec.ts`                               |
+
 ## Latest results
 
 Recorded from the final verification run (see the README for how to reproduce).
 
-- **Unit + acceptance:** 16 files, **387 tests passed**, 0 failed.
+- **Unit + acceptance:** 17 files, **421 tests passed**, 0 failed.
 - **Coverage:** `src/domain/` **100 %** statements, branches, functions and lines (every file). Overall: 100 % statements, 100 % lines, 100 % functions, 99.0 % branches. The thresholds in `vite.config.ts` fail the run if `src/domain/` drops below 100 % or the total below 90 %.
-- **End-to-end:** **32 tests passed** in headless Chromium against the production build.
+- **End-to-end:** **37 tests passed** in headless Chromium against the production build.
 - **Lint / format / types:** `eslint --max-warnings 0`, `prettier --check` and `tsc --noEmit` all clean.
 
 The few uncovered branches outside the domain are defensive fallbacks that cannot happen through normal use: `main.ts` when the page has no `#app` element, an unexpected (non-`SaveShapeError`) error while decoding a save, and the `?? productId` name fallback in two Shop messages (the product is always found once the rules have accepted the action).

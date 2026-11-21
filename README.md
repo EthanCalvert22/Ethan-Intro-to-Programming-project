@@ -21,8 +21,9 @@ More screenshots: [start](docs/screenshots/desktop-1-start.png) · [final result
 3. **Set prices:** type a price (`2.80` or `2,80`) and press Enter, or nudge it by 10 cents.
 4. Check **How customers decide**: at or below the fair price, 10 customers come; up to twice it, 5; above that, nobody.
 5. Read the **Campus news**: events like exam week or a rainy day bring more (×1.5) or fewer (×0.5) customers for some items. You can see tomorrow's event too, so stock up a day early. Untick "Include campus events" in **New run** for a classic week.
-6. Press **Open for the day**. You sell the smaller of demand and your stock. Leftovers stay on the shelf.
-7. Repeat until day 5, then read your **Final results**. Your best five runs go on the **High scores** board, with the date. **New run** starts over (after asking) and keeps your high scores.
+6. Visit the **Upgrades Shop** if you like: a loyalty program (+2 customers a day), going viral (+5 for a day) or a supplier deal (15% off stock). Each costs money, so it has to pay for itself.
+7. Press **Open for the day**. You sell the smaller of demand and your stock. Leftovers stay on the shelf.
+8. Repeat until day 5, then read your **Final results**. Your best five runs go on the **High scores** board, with the date. **New run** starts over (after asking) and keeps your high scores.
 
 | Item       | Unit cost | Fair (reference) price |
 | ---------- | --------- | ---------------------- |
@@ -100,4 +101,4 @@ docs/           decisions, plain-language explanation, test map, limitations, sc
 
 ## Future work
 
-Ideas not built yet: upgrades like a second coffee machine, a competing café across campus, spoilage for fresh items, a smoother demand curve, and a history chart across runs.
+Ideas not built yet: more upgrades like a second coffee machine, a competing café across campus, spoilage for fresh items, a smoother demand curve, and a history chart across runs.
