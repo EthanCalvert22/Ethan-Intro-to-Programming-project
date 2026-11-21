@@ -35,7 +35,16 @@ describe("writeSave and readSave", () => {
     const data = JSON.parse(writeSave(playedRun())) as Record<string, unknown>;
     expect(data.version).toBe(1);
     expect(Object.keys(data).sort()).toEqual(
-      ["cashCents", "currentDay", "history", "prices", "status", "stock", "version"].sort(),
+      [
+        "cashCents",
+        "currentDay",
+        "history",
+        "prices",
+        "purchasedUpgrades",
+        "status",
+        "stock",
+        "version",
+      ].sort(),
     );
   });
 
