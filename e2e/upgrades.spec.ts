@@ -1,0 +1,31 @@
+import { expect, test } from "@playwright/test";
+import { buy, card, freshStart, openForTheDay, receipt } from "./helpers";
+
+test("shop purchases survive reloads, affect sales, and reset with a new run", async ({ page }) => {
+  await freshStart(page);
+  const shop = page.getByRole("region", { name: "Upgrades Shop" });
+  const loyalty = shop.getByRole("button", { name: /Buy Student Loyalty Program/ });
+  const viral = shop.getByRole("button", { name: /Buy Go Viral/ });
+  await expect(loyalty).toContainText("€15.00");
+  await expect(viral).toContainText("€20.00");
+  await loyalty.click();
+  await viral.click();
+  await page.reload();
+  await expect(page.getByTestId("cash")).toHaveText("€65.00");
+  await expect(loyalty).toBeDisabled();
+  await expect(viral).toBeDisabled();
+  await expect(shop.getByText("Active today")).toBeVisible();
+  await expect(card(page, "Toastie")).toContainText("17 customers will want one on day 1");
+  await buy(page, "Toastie", 18);
+  await openForTheDay(page, 1);
+  await expect(receipt(page)).toContainText("17 × €4.50");
+  await page.reload();
+  await expect(shop.getByText("Used", { exact: true })).toBeVisible();
+  await expect(viral).toBeDisabled();
+  await expect(card(page, "Toastie")).toContainText("12 customers will want one on day 2");
+  await page.getByRole("button", { name: "New run", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Yes, start a new run" }).click();
+  await expect(page.getByTestId("cash")).toHaveText("€100.00");
+  await expect(viral).toBeEnabled();
+  await expect(loyalty).toBeEnabled();
+});

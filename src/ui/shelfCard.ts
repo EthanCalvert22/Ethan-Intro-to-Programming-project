@@ -1,5 +1,5 @@
 import type { Product } from "../domain/catalogue";
-import { demand } from "../domain/demand";
+import { demand, demandForDay } from "../domain/demand";
 import { parsePriceText, parseQuantityText } from "../domain/input";
 import { formatEuros, formatPriceForInput } from "../domain/money";
 import { MAX_ORDER_QUANTITY, MAX_PRICE_CENTS } from "../domain/rules";
@@ -142,7 +142,7 @@ export class ShelfCard {
         orderForm,
         priceForm,
         el("p", { class: "hint tier-note" }, [
-          `Above ${formatEuros(product.referencePriceCents)} only 5 customers come; above ${twiceReference} nobody does.`,
+          `Above ${formatEuros(product.referencePriceCents)} base demand is 5; above ${twiceReference} it is 0.`,
         ]),
       ],
     );
@@ -278,9 +278,16 @@ export class ShelfCard {
     } else if (!parsed.ok) {
       this.priceHint.textContent = parsed.error.message;
     } else {
-      const wanted = customers(demand(parsed.value, this.product.referencePriceCents));
+      const base = demand(parsed.value, this.product.referencePriceCents);
+      const today = demandForDay(
+        this.run,
+        this.run.currentDay,
+        parsed.value,
+        this.product.referencePriceCents,
+      );
+      const when = today === base ? "each day" : `on day ${this.run.currentDay} with upgrades`;
       const pending = parsed.value === saved ? "" : " Press Set price or Enter to use it.";
-      this.priceHint.textContent = `At ${formatEuros(parsed.value)}, ${wanted} will want one each day.${pending}`;
+      this.priceHint.textContent = `At ${formatEuros(parsed.value)}, ${customers(today)} will want one ${when}.${pending}`;
     }
   }
 

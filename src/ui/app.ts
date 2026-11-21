@@ -12,6 +12,7 @@ import { NewRunDialog } from "./newRunDialog";
 import { renderReceipt } from "./receipt";
 import { ShelfCard } from "./shelfCard";
 import { openShop, type ActionOutcome, type Opening, type Shop } from "./shop";
+import { UpgradesShop } from "./upgradesShop";
 
 const MEMORY_ONLY_NOTICE =
   "This browser isn't letting me save, so your café will only last until you close this page.";
@@ -55,6 +56,7 @@ function describeRun(run: Run): string {
 /** The café screen: everything the player sees and touches while a run is open. */
 class CafeScreen {
   private readonly cards: ShelfCard[];
+  private readonly upgradesShop: UpgradesShop;
   private readonly chalkboard: Chalkboard;
   private readonly dialog: NewRunDialog;
   private readonly cashValue = el("dd", { "data-testid": "cash" });
@@ -101,6 +103,9 @@ class CafeScreen {
         }),
     );
     this.chalkboard = new Chalkboard(run);
+    this.upgradesShop = new UpgradesShop((id) => {
+      this.show(this.shop.buyUpgrade(id));
+    });
     this.dialog = new NewRunDialog(() => {
       this.startNewRun();
     });
@@ -145,6 +150,7 @@ class CafeScreen {
             el("div", { class: "open-bar" }, [this.openButton]),
           ]),
           el("div", { class: "side" }, [
+            this.upgradesShop.element,
             renderDemandPanel(),
             el("section", { class: "panel till-roll", "aria-labelledby": "receipts-title" }, [
               el("h2", { id: "receipts-title" }, ["Till receipts"]),
@@ -218,6 +224,7 @@ class CafeScreen {
     const onShelf = Object.values(run.stock).reduce((total, units) => total + units, 0);
     this.shelfValue.textContent = String(onShelf);
     this.chalkboard.update(run);
+    this.upgradesShop.update(run);
     this.cards.forEach((card) => {
       card.update(run);
     });

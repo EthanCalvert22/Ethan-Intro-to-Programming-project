@@ -393,6 +393,24 @@ p {
   font-weight: 600;
 }
 
+/* The upgrades shop */
+
+.upgrade-list {
+  display: grid;
+  gap: 1rem;
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+}
+
+.upgrade-list h3 {
+  margin: 0;
+}
+
+.upgrade-list .button {
+  margin-top: 0.5rem;
+}
+
 /* The shelf */
 
 .shelf-cards {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buy, newRun, tradeDay, type Run } from "../../src/domain/run";
+import { buyUpgrade } from "../../src/domain/upgrades";
 import { migrate, readSave, writeSave } from "../../src/storage/saveFormat";
 import { cafe } from "../helpers";
 
@@ -45,6 +46,45 @@ describe("writeSave and readSave", () => {
         "stock",
         "version",
       ].sort(),
+    );
+  });
+
+  it("round-trips an active upgrade and its boosted receipt after it expires", () => {
+    const purchase = buyUpgrade(playedRun(), "go-viral");
+    if (!purchase.ok) throw new Error(purchase.error.message);
+    expect(readSave(writeSave(purchase.value), cafe)).toEqual({ ok: true, run: purchase.value });
+    const traded = tradeDay(purchase.value, cafe);
+    if (!traded.ok) throw new Error(traded.error.message);
+    expect(traded.value.history[1]?.lines[0]?.demand).toBe(15);
+    expect(readSave(writeSave(traded.value), cafe)).toEqual({ ok: true, run: traded.value });
+    expect(
+      problemWith(
+        writeSave({
+          ...traded.value,
+          upgradePurchaseDays: { "go-viral": 1 },
+        }),
+      ),
+    ).toContain("demand");
+  });
+
+  it("loads saves from before the shop and restores purchases from before dates were recorded", () => {
+    const oldSave = tamper(({ purchasedUpgrades: _drop, ...rest }) => rest);
+    expect(readSave(oldSave, cafe)).toEqual({ ok: true, run: playedRun() });
+    const purchase = buyUpgrade(playedRun(), "loyalty-program");
+    if (!purchase.ok) throw new Error(purchase.error.message);
+    const { upgradePurchaseDays: _drop, ...legacy } = purchase.value;
+    expect(readSave(writeSave(legacy), cafe)).toEqual({ ok: true, run: purchase.value });
+  });
+
+  it.each([
+    { purchasedUpgrades: ["fake"] },
+    { purchasedUpgrades: ["go-viral", "go-viral"] },
+    { purchasedUpgrades: ["go-viral"], upgradePurchaseDays: { "go-viral": 3 } },
+    { purchasedUpgrades: ["go-viral"], upgradePurchaseDays: {} },
+    { upgradePurchaseDays: { "go-viral": 2 } },
+  ])("refuses inconsistent upgrade data: %j", (change) => {
+    expect(problemWith(tamper((data) => ({ ...data, ...change })))).toMatch(
+      /upgrades|purchase days/,
     );
   });
 

@@ -3,7 +3,13 @@ import { MAX_ORDER_QUANTITY, MAX_PRICE_CENTS } from "./rules";
 
 /** Every reason the café can refuse an action. Each comes with a message for the player. */
 export type ShopErrorKind =
-  "NotAffordable" | "InvalidQuantity" | "InvalidPrice" | "UnknownProduct" | "RunCompleted";
+  | "NotAffordable"
+  | "InvalidQuantity"
+  | "InvalidPrice"
+  | "UnknownProduct"
+  | "RunCompleted"
+  | "UnknownUpgrade"
+  | "UpgradeAlreadyPurchased";
 
 export interface ShopError {
   readonly kind: ShopErrorKind;

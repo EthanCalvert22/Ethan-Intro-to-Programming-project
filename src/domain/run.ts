@@ -1,5 +1,5 @@
 import { findProduct, type Catalogue, type Product } from "./catalogue";
-import { demand } from "./demand";
+import { demandForDay } from "./demand";
 import {
   invalidPrice,
   invalidQuantity,
@@ -67,7 +67,9 @@ export interface Run {
   readonly stock: Shelf;
   readonly prices: PriceList;
   readonly history: readonly DayResult[];
-  readonly purchasedUpgrades?: readonly string[];
+  readonly purchasedUpgrades: readonly string[];
+  /** Trading day when each upgrade first took effect. */
+  readonly upgradePurchaseDays?: Readonly<Partial<Record<string, number>>>;
 }
 
 export interface FinalSummary {
@@ -170,7 +172,7 @@ export function setPrice(
 /** What one product does today: sales are capped by stock (CT R2). */
 function tradeLine(run: Run, product: Product): DayLine {
   const priceCents = priceOf(run, product);
-  const wanted = demand(priceCents, product.referencePriceCents);
+  const wanted = demandForDay(run, run.currentDay, priceCents, product.referencePriceCents);
   const unitsSold = Math.min(wanted, stockOf(run, product.id));
   const revenueCents = unitsSold * priceCents;
   // The stock was paid for when it was bought; COGS is reported, not taken from cash again (CT R4).

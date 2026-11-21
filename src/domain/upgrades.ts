@@ -1,7 +1,9 @@
+import { notAffordable, runCompleted } from "./errors";
+import { accept, refuse, type Outcome } from "./result";
 import type { Run } from "./run";
 
 export interface Upgrade {
-  id: string;
+  readonly id: string;
   name: string;
   costCents: number;
   description: string;
@@ -9,7 +11,7 @@ export interface Upgrade {
   demandBonus: number;
 }
 
-export const upgrades: Upgrade[] = [
+export const upgrades: readonly Upgrade[] = [
   {
     id: "loyalty-program",
     name: "Student Loyalty Program",
@@ -28,34 +30,41 @@ export const upgrades: Upgrade[] = [
   },
 ];
 
-export function buyUpgrade(
-  run: Run,
-  upgradeId: string,
-): { ok: true; value: Run } | { ok: false; message: string } {
+export function buyUpgrade(run: Run, upgradeId: string): Outcome<Run> {
   if (run.status === "completed") {
-    return { ok: false, message: "The game is already finished." };
+    return refuse(runCompleted());
   }
 
-  const upgrade = upgrades.find((item) => item.id === upgradeId);
+  const upgrade = findUpgrade(upgradeId);
 
   if (!upgrade) {
-    return { ok: false, message: "Upgrade not found." };
+    return refuse({ kind: "UnknownUpgrade", message: "Upgrade not found." });
   }
 
-  if (run.purchasedUpgrades?.includes(upgradeId)) {
-    return { ok: false, message: "Upgrade already purchased." };
+  if (run.purchasedUpgrades.includes(upgradeId)) {
+    return refuse({ kind: "UpgradeAlreadyPurchased", message: "Upgrade already purchased." });
   }
 
   if (run.cashCents < upgrade.costCents) {
-    return { ok: false, message: "Not enough money." };
+    return refuse(notAffordable(upgrade.costCents, run.cashCents));
   }
 
-  return {
-    ok: true,
-    value: {
-      ...run,
-      cashCents: run.cashCents - upgrade.costCents,
-      purchasedUpgrades: [...(run.purchasedUpgrades ?? []), upgradeId],
-    },
-  };
+  return accept({
+    ...run,
+    cashCents: run.cashCents - upgrade.costCents,
+    purchasedUpgrades: [...run.purchasedUpgrades, upgradeId],
+    upgradePurchaseDays: { ...run.upgradePurchaseDays, [upgradeId]: run.currentDay },
+  });
+}
+
+export function findUpgrade(upgradeId: string): Upgrade | undefined {
+  return upgrades.find((upgrade) => upgrade.id === upgradeId);
+}
+
+export function upgradeAppliesOn(run: Run, upgrade: Upgrade, day: number): boolean {
+  const purchasedOn = run.upgradePurchaseDays?.[upgrade.id];
+  return (
+    purchasedOn !== undefined &&
+    (upgrade.duration === "permanent" ? purchasedOn <= day : purchasedOn === day)
+  );
 }

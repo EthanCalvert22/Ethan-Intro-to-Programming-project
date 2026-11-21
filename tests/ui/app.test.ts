@@ -177,6 +177,30 @@ describe("buying stock", () => {
   });
 });
 
+describe("buying upgrades", () => {
+  it("keeps the cash and demand unchanged when an upgrade cannot be saved", () => {
+    start();
+    storage.failWrites = true;
+    const viral = button(/^Buy Go Viral/);
+    viral.click();
+    expect(testId("message")).toContain("I couldn't save that");
+    expect(testId("cash")).toBe("€100.00");
+    expect(viral.disabled).toBe(false);
+    expect(text("#price-hint-toastie")).toContain("10 customers");
+  });
+
+  it("disables upgrades when unaffordable and makes them available again on a new run", () => {
+    start();
+    buy("toastie", 46);
+    const loyalty = button(/^Buy Student Loyalty Program/);
+    expect(loyalty.disabled).toBe(true);
+    expect(text("#upgrade-status-loyalty-program")).toBe("Not enough cash");
+    button("New run").click();
+    closeDialog("confirm");
+    expect(loyalty.disabled).toBe(false);
+  });
+});
+
 describe("setting prices", () => {
   it("describes demand live and sets the price on submit", () => {
     start();

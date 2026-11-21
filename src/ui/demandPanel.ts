@@ -30,7 +30,9 @@ const tiers = [
 export function renderDemandPanel(): HTMLElement {
   return el("section", { class: "panel demand-panel", "aria-labelledby": "demand-title" }, [
     el("h2", { id: "demand-title" }, ["How customers decide"]),
-    el("p", {}, ["Each day, for each item, customers compare your price with its fair price:"]),
+    el("p", {}, [
+      "Your price sets the base demand for each item. Active upgrades add customers to these counts.",
+    ]),
     el(
       "ol",
       { class: "demand-steps" },

@@ -85,18 +85,42 @@ function decodeDay(value: unknown, position: number): DayResult {
   };
 }
 
+function decodePurchasedUpgrades(value: unknown): readonly string[] {
+  if (value === undefined) {
+    return [];
+  }
+  return asList(value, "Purchased upgrades").map((id) => {
+    if (typeof id !== "string") {
+      throw new SaveShapeError("A purchased upgrade has no valid ID.");
+    }
+    return id;
+  });
+}
+
 function decodeRun(fields: Fields): Run {
   if (fields.status !== "in_progress" && fields.status !== "completed") {
     throw new SaveShapeError("The run status is not recognised.");
   }
+  const currentDay = asNumber(fields.currentDay, "The current day");
+  const purchasedUpgrades = decodePurchasedUpgrades(fields.purchasedUpgrades);
+  // Old saves recorded the payment but did not record a day or apply any bonus.
+  // Start those bonuses on the next unplayed day, leaving all old receipts intact.
+  const upgradePurchaseDays =
+    fields.upgradePurchaseDays !== undefined
+      ? asNumberMap(fields.upgradePurchaseDays, "Upgrade purchase days")
+      : purchasedUpgrades.length > 0 && fields.status === "in_progress"
+        ? Object.fromEntries(purchasedUpgrades.map((id) => [id, currentDay]))
+        : undefined;
   return {
     version: RUN_FORMAT_VERSION,
     status: fields.status,
-    currentDay: asNumber(fields.currentDay, "The current day"),
+    currentDay,
     cashCents: asNumber(fields.cashCents, "Cash"),
     stock: asNumberMap(fields.stock, "Stock"),
     prices: asNumberMap(fields.prices, "Prices"),
     history: asList(fields.history, "The history").map(decodeDay),
+    purchasedUpgrades,
+    ...(upgradePurchaseDays === undefined ? {} : { upgradePurchaseDays }),
   };
 }
 

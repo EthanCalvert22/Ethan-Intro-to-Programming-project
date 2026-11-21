@@ -13,6 +13,7 @@ import {
   type FinalSummary,
   type Run,
 } from "../domain/run";
+import { buyUpgrade, findUpgrade } from "../domain/upgrades";
 import { RunStore } from "../storage/runStore";
 
 /*
@@ -57,6 +58,14 @@ export class Shop {
       const product = findProduct(this.catalogue, productId);
       const cost = formatEuros(this.current.cashCents - run.cashCents);
       return `Bought ${quantity} × ${product?.name ?? productId} for ${cost}. ${formatEuros(run.cashCents)} left in the till.`;
+    });
+  }
+
+  buyUpgrade(upgradeId: string): ActionOutcome {
+    return this.commit(buyUpgrade(this.current, upgradeId), (run) => {
+      const upgrade = findUpgrade(upgradeId);
+      const cost = formatEuros(this.current.cashCents - run.cashCents);
+      return `Bought ${upgrade?.name ?? upgradeId} for ${cost}. ${formatEuros(run.cashCents)} left in the till.`;
     });
   }
 
