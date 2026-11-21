@@ -1,4 +1,4 @@
-
+import type { Run } from "./run";
 export interface Upgrade {
   id: string;
   name: string;
@@ -26,3 +26,36 @@ export const upgrades: Upgrade[] = [
     demandBonus: 5,
   },
 ];
+
+export function buyUpgrade(
+  run: Run,
+  upgradeId: string,
+): { ok: true; value: Run } | { ok: false; message: string } {
+
+  if (run.status === "completed") {
+    return { ok: false, message: "The game is already finished." };
+  }
+
+  const upgrade = upgrades.find((item) => item.id === upgradeId);
+
+  if (!upgrade) {
+    return { ok: false, message: "Upgrade not found." };
+  }
+
+  if (run.purchasedUpgrades?.includes(upgradeId)) {
+    return { ok: false, message: "Upgrade already purchased." };
+  }
+
+  if (run.cashCents < upgrade.costCents) {
+    return { ok: false, message: "Not enough money." };
+  }
+
+  return {
+    ok: true,
+    value: {
+      ...run,
+      cashCents: run.cashCents - upgrade.costCents,
+      purchasedUpgrades: [...(run.purchasedUpgrades ?? []), upgradeId],
+    },
+  };
+}
