@@ -67,6 +67,7 @@ export interface Run {
   readonly stock: Shelf;
   readonly prices: PriceList;
   readonly history: readonly DayResult[];
+  readonly purchasedUpgrades?: readonly string[];
 }
 
 export interface FinalSummary {
@@ -87,6 +88,7 @@ export function newRun(catalogue: Catalogue): Run {
       catalogue.map((product) => [product.id, product.referencePriceCents]),
     ),
     history: [],
+    purchasedUpgrades: [],
   };
 }
 
