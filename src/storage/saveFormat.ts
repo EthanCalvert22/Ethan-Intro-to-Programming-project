@@ -1,4 +1,5 @@
 import type { Catalogue } from "../domain/catalogue";
+import { CLASSIC_WEEK, ORDINARY_DAY } from "../domain/events";
 import { findRunProblem } from "../domain/invariants";
 import { RUN_FORMAT_VERSION } from "../domain/rules";
 import type { DayLine, DayResult, DayTotals, Run, Shelf } from "../domain/run";
@@ -34,6 +35,13 @@ function asNumber(value: unknown, what: string): number {
 function asList(value: unknown, what: string): readonly unknown[] {
   if (!Array.isArray(value)) {
     throw new SaveShapeError(`${what} is not a list.`);
+  }
+  return value;
+}
+
+function asText(value: unknown, what: string): string {
+  if (typeof value !== "string") {
+    throw new SaveShapeError(`${what} is not in the expected format.`);
   }
   return value;
 }
@@ -76,6 +84,7 @@ function decodeDay(value: unknown, position: number): DayResult {
   const fields = asFields(value, what);
   return {
     day: asNumber(fields.day, `${what} number`),
+    eventId: asText(fields.eventId, `${what} event`),
     lines: asList(fields.lines, `${what} lines`).map((line, index) =>
       decodeLine(line, `${what}, line ${index + 1}`),
     ),
@@ -96,16 +105,34 @@ function decodeRun(fields: Fields): Run {
     cashCents: asNumber(fields.cashCents, "Cash"),
     stock: asNumberMap(fields.stock, "Stock"),
     prices: asNumberMap(fields.prices, "Prices"),
+    events: asList(fields.events, "The planned events").map((eventId, index) =>
+      asText(eventId, `The event for day ${index + 1}`),
+    ),
     history: asList(fields.history, "The history").map(decodeDay),
   };
 }
 
 /**
- * Brings older save formats up to date. Version 1 is the only format so far; a future
- * version 2 would add a step here that turns a version 1 save into a version 2 save.
+ * Version 1 saves come from before campus events existed. They become version 2 by
+ * planning five ordinary days and marking every recorded day as ordinary, which is
+ * exactly how those days were traded, so an old run carries on unchanged.
  */
+function upgradeFromVersion1(fields: Fields): Fields {
+  const history = Array.isArray(fields.history)
+    ? fields.history.map((day: unknown) => ({
+        ...asFields(day, "A day in the history"),
+        eventId: ORDINARY_DAY.id,
+      }))
+    : fields.history;
+  return { ...fields, version: 2, events: CLASSIC_WEEK, history };
+}
+
+/** Brings older save formats up to date, one version step at a time. */
 export function migrate(data: unknown): Fields {
-  const fields = asFields(data, "The save");
+  let fields = asFields(data, "The save");
+  if (fields.version === 1) {
+    fields = upgradeFromVersion1(fields);
+  }
   const version = fields.version;
   if (version === RUN_FORMAT_VERSION) {
     return fields;

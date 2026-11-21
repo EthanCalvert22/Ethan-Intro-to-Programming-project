@@ -11,10 +11,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Pinned to Ubuntu 24.04: ubuntu-latest moved to 26.04, which the pinned Playwright
+# version (1.56.1) cannot install its browser on.
 jobs:
   checks:
     name: Lint, types and unit tests (Node ${{ matrix.node }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -34,7 +36,7 @@ jobs:
 
   e2e:
     name: End-to-end tests (Playwright, Chromium)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

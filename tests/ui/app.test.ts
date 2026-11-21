@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { CLASSIC_WEEK } from "../../src/domain/events";
 import { newRun } from "../../src/domain/run";
 import { BACKUP_KEY, RUN_KEY, type KeyValueStorage } from "../../src/storage/runStore";
 import { startApp } from "../../src/ui/app";
@@ -91,8 +92,9 @@ function openButton(): HTMLButtonElement {
   return $<HTMLButtonElement>(".button-open");
 }
 
-function start(): void {
-  startApp(root, { localStorage: storage });
+/** Most tests play the classic week, so their numbers follow the original rules exactly. */
+function start(planWeek: () => readonly string[] = () => CLASSIC_WEEK): void {
+  startApp(root, { localStorage: storage }, planWeek);
 }
 
 function closeDialog(value: string): void {
@@ -182,12 +184,12 @@ describe("setting prices", () => {
     start();
     type(priceInput("toastie"), "4.51");
     expect(text("#price-hint-toastie")).toBe(
-      "At €4.51, 5 customers will want one each day. Press Set price or Enter to use it.",
+      "At €4.51, 5 customers will want one today. Press Set price or Enter to use it.",
     );
     submit(priceInput("toastie").form as HTMLFormElement);
     expect(testId("message")).toBe("Toastie now sells for €4.51.");
     expect(priceInput("toastie").value).toBe("4.51");
-    expect(text("#price-hint-toastie")).toBe("At €4.51, 5 customers will want one each day.");
+    expect(text("#price-hint-toastie")).toBe("At €4.51, 5 customers will want one today.");
     expect(storage.writes).toBe(1);
   });
 
@@ -461,6 +463,7 @@ describe("small building blocks", () => {
     const receipt = renderReceipt(
       {
         day: 1,
+        eventId: "mystery-event",
         lines: [
           {
             productId: "mystery",
@@ -479,6 +482,8 @@ describe("small building blocks", () => {
       cafe,
     );
     expect(receipt.textContent).toContain("mystery");
+    // An event the game doesn't know is shown as an ordinary day rather than breaking the receipt.
+    expect(receipt.querySelector(".receipt-event")?.textContent).toBe("Ordinary day");
   });
 
   it("draws a plain icon for a product without its own picture", () => {
@@ -490,5 +495,86 @@ describe("small building blocks", () => {
     vi.resetModules();
     await import("../../src/main");
     expect(document.querySelector(".brand-name")?.textContent).toBe("Brew & Byte");
+  });
+});
+
+describe("campus events", () => {
+  const week = ["exam-week", "rainy-day", "ordinary-day", "open-day", "big-match"];
+  const newsCards = () => [...root.querySelectorAll<HTMLElement>(".news-card")];
+  const chips = (card: HTMLElement | undefined) =>
+    [...(card?.querySelectorAll(".news-chip") ?? [])].map((chip) => chip.textContent);
+
+  it("shows today's and tomorrow's events, and which items they affect", () => {
+    start(() => week);
+    const [today, tomorrow] = newsCards();
+    expect(today?.querySelector(".news-when")?.textContent).toBe("Today · Day 1");
+    expect(today?.querySelector(".news-name")?.textContent).toBe("Exam week");
+    expect(chips(today)).toEqual(["Flat white ×1.5", "Brownie ×1.5"]);
+    expect(tomorrow?.querySelector(".news-when")?.textContent).toBe("Tomorrow · Day 2");
+    expect(tomorrow?.querySelector(".news-name")?.textContent).toBe("Rainy day");
+    expect(chips(tomorrow)).toEqual(["Toastie ×1.5"]);
+    expect(root.querySelector(".news-up")).not.toBeNull();
+  });
+
+  it("counts today's event in each item's price hint", () => {
+    start(() => week);
+    expect(text("#price-hint-flat-white")).toBe(
+      "At €2.80, 15 customers will want one today (Exam week).",
+    );
+    expect(text("#price-hint-toastie")).toBe(
+      "At €4.50, 10 customers will want one today (Exam week).",
+    );
+  });
+
+  it("trades with the event and records it on the receipt", () => {
+    start(() => week);
+    buy("flat-white", 20);
+    openButton().click();
+    expect(testId("message")).toBe("Day 1 is done (Exam week): sold 15 items for €42.00.");
+    expect(text(".receipt-event")).toBe("Exam week");
+    const [today, tomorrow] = newsCards();
+    expect(today?.querySelector(".news-name")?.textContent).toBe("Rainy day");
+    expect(tomorrow?.querySelector(".news-name")?.textContent).toBe("Ordinary day");
+    expect(chips(tomorrow)).toEqual([]);
+  });
+
+  it("warns on the last day that there is no tomorrow, and hides the news once the run is over", () => {
+    start(() => week);
+    for (let day = 1; day <= 4; day += 1) {
+      openButton().click();
+    }
+    const [today, tomorrow] = newsCards();
+    expect(today?.querySelector(".news-name")?.textContent).toBe("Big match");
+    expect(root.querySelector(".news-down")).not.toBeNull();
+    expect(tomorrow?.querySelector(".news-name")?.textContent).toBe("Last day");
+    openButton().click();
+    expect($(".campus-news").hidden).toBe(true);
+  });
+
+  it("a new run plans a fresh week of events by default", () => {
+    start(() => week);
+    button("New run", root).click();
+    expect($<HTMLInputElement>("#new-run-events").checked).toBe(true);
+    closeDialog("confirm");
+    expect(JSON.parse(storage.getItem(RUN_KEY) ?? "null")).toMatchObject({ events: week });
+  });
+
+  it("unticking 'Include campus events' starts a classic week with the original rules", () => {
+    start(() => week);
+    button("New run", root).click();
+    $<HTMLInputElement>("#new-run-events").checked = false;
+    closeDialog("confirm");
+    expect(testId("message")).toBe(
+      "Fresh start! You have €100.00 and an empty shelf. This is a classic week with no campus events.",
+    );
+    expect(JSON.parse(storage.getItem(RUN_KEY) ?? "null")).toMatchObject({ events: CLASSIC_WEEK });
+    expect(newsCards()[0]?.querySelector(".news-name")?.textContent).toBe("Ordinary day");
+  });
+
+  it("plans a real random week when the app starts for a player", () => {
+    startApp(root, { localStorage: storage });
+    const saved = newsCards().map((card) => card.querySelector(".news-name")?.textContent);
+    expect(saved).toHaveLength(2);
+    expect(saved.every((name) => typeof name === "string" && name.length > 0)).toBe(true);
   });
 });

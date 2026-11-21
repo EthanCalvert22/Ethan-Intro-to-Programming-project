@@ -68,6 +68,7 @@ One small class, the **Shop** (`src/ui/shop.ts`), sits at the counter between th
 | `catalogue.ts`  | Describes a product and checks the menu file at startup (3+ products, unique ids, positive whole cents).                                                   |
 | `demand.ts`     | One small function: given a price and a reference price, how many customers want the item today (10, 5 or 0).                                              |
 | `run.ts`        | The heart of the game: `newRun`, `buy`, `setPrice`, `tradeDay`, `summary`. Each takes the current café and returns a new one, or a refusal.                |
+| `events.ts`     | **Campus events (version 2):** the list of events, how an event scales the number of customers, and how a seed becomes a repeatable week of events.        |
 | `errors.ts`     | The five reasons the café can say no (`NotAffordable`, `InvalidQuantity`, `InvalidPrice`, `UnknownProduct`, `RunCompleted`), each with a friendly message. |
 | `result.ts`     | The "answer envelope": either `{ ok: true, value }` or `{ ok: false, error }`. Nothing in the rulebook ever crashes on bad input.                          |
 | `input.ts`      | Turns what the player typed (`"4,50"`, `" 12 "`) into whole numbers, or explains what is wrong.                                                            |
@@ -89,6 +90,7 @@ One small class, the **Shop** (`src/ui/shop.ts`), sits at the counter between th
 | `app.ts`          | Builds the page and keeps it up to date: the till figures, the next-step hint, the shelf, the receipts, the final card.                                                  |
 | `shelfCard.ts`    | One card per product: stock count, order stepper with live total, price box with 10-cent nudges and a live demand hint.                                                  |
 | `chalkboard.ts`   | The five-day "chalkboard" showing which days are done and which is next.                                                                                                 |
+| `campusNews.ts`   | **Campus events:** the "Campus news" strip showing today's and tomorrow's event and the items each one affects.                                                          |
 | `receipt.ts`      | Draws one day's results as a till receipt.                                                                                                                               |
 | `demandPanel.ts`  | The always-visible "How customers decide" panel with its three-step picture.                                                                                             |
 | `finalCard.ts`    | The "Final results" card with an encouraging message for a gain, a loss, or breaking even.                                                                               |
@@ -100,39 +102,41 @@ One small class, the **Shop** (`src/ui/shop.ts`), sits at the counter between th
 
 ### `tests/` and `e2e/`
 
-| File                               | What it checks                                                                                       |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `tests/helpers.ts`                 | Shared test tools, including `CountingStorage`, a fake browser storage that counts every write.      |
-| `tests/acceptance.test.ts`         | Runs everything in `spec/acceptance.json`.                                                           |
-| `tests/domain/demand.test.ts`      | The demand rule and its exact boundaries.                                                            |
-| `tests/domain/input.test.ts`       | Reading typed quantities and prices; money formatting.                                               |
-| `tests/domain/run.test.ts`         | Buying, pricing, trading, the end of the run, the final summary.                                     |
-| `tests/domain/catalogue*.test.ts`  | Menu validation, including what happens if the menu file is broken.                                  |
-| `tests/domain/invariants.test.ts`  | That each kind of broken café state is caught.                                                       |
-| `tests/domain/properties.test.ts`  | Thousands of random action sequences: the promises always hold.                                      |
-| `tests/domain/playthrough.test.ts` | A full five-day game worked out by hand, and an independent reconciliation.                          |
-| `tests/storage/*.test.ts`          | Saving, loading, damaged saves, full or blocked storage.                                             |
-| `tests/ui/shop.test.ts`            | Save-then-show, no writes on refusals, atomicity when a save fails, startup paths.                   |
-| `tests/ui/app.test.ts`             | The real screen code in a simulated browser: every button, message and state.                        |
-| `e2e/*.spec.ts`                    | The real built app in real Chromium: full run, reloads, dialog, keyboard, accessibility scan, phone. |
-| `e2e/screenshots.spec.ts`          | Takes the screenshots in `docs/screenshots/`.                                                        |
+| File                               | What it checks                                                                                                                              |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/helpers.ts`                 | Shared test tools, including `CountingStorage`, a fake browser storage that counts every write.                                             |
+| `tests/acceptance.test.ts`         | Runs everything in `spec/acceptance.json`.                                                                                                  |
+| `tests/domain/demand.test.ts`      | The demand rule and its exact boundaries.                                                                                                   |
+| `tests/domain/input.test.ts`       | Reading typed quantities and prices; money formatting.                                                                                      |
+| `tests/domain/run.test.ts`         | Buying, pricing, trading, the end of the run, the final summary.                                                                            |
+| `tests/domain/catalogue*.test.ts`  | Menu validation, including what happens if the menu file is broken.                                                                         |
+| `tests/domain/invariants.test.ts`  | That each kind of broken café state is caught.                                                                                              |
+| `tests/domain/properties.test.ts`  | Thousands of random action sequences: the promises always hold.                                                                             |
+| `tests/domain/playthrough.test.ts` | A full five-day game worked out by hand, and an independent reconciliation.                                                                 |
+| `tests/domain/events.test.ts`      | **Campus events:** the event list, the ×1.5 / ×0.5 maths and rounding, repeatable weeks, trading with events, and random games with events. |
+| `tests/storage/*.test.ts`          | Saving, loading, damaged saves, full or blocked storage.                                                                                    |
+| `tests/ui/shop.test.ts`            | Save-then-show, no writes on refusals, atomicity when a save fails, startup paths.                                                          |
+| `tests/ui/app.test.ts`             | The real screen code in a simulated browser: every button, message and state.                                                               |
+| `e2e/*.spec.ts`                    | The real built app in real Chromium: full run, reloads, dialog, keyboard, accessibility scan, phone.                                        |
+| `e2e/screenshots.spec.ts`          | Takes the screenshots in `docs/screenshots/`.                                                                                               |
 
 ---
 
 ## 3. Each rule traced to code
 
-| Requirement / rule                                                                                                   | Implemented in                                                                                                                        | Checked by                                                                                                         |
-| -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **CT01** Manage a run: show day, cash, stock, progress; confirm before replacing                                     | `run.ts › newRun`, `app.ts › CafeScreen.refresh`, `chalkboard.ts`, `newRunDialog.ts`, `shop.ts › startNewRun`                         | `run.test.ts › newRun`; `app.test.ts › first visit`, `starting a new run`; `e2e/newRun.spec.ts`                    |
-| **CT02** Purchase stock: positive whole quantity, show total, refuse if unaffordable, update cash and stock together | `run.ts › buy`, `input.ts › parseQuantityText`, `shelfCard.ts › refreshOrder`                                                         | `run.test.ts › buy (CT02)`; acceptance `A1`, `E1`–`E3`; `e2e/rules.spec.ts › A1`                                   |
-| **CT03** Set prices: positive price, demand rule visible                                                             | `run.ts › setPrice`, `input.ts › parsePriceText`, `demandPanel.ts`, `shelfCard.ts › refreshPrice`                                     | `run.test.ts › setPrice (CT03)`; acceptance `A2`, `E4`; `e2e/rules.spec.ts › A2`                                   |
-| **CT04** Trade one day: units, revenue, COGS, gross profit per item and total                                        | `run.ts › tradeDay` (with `tradeLine`, `addUp`), `receipt.ts`                                                                         | `run.test.ts › tradeDay`; acceptance `A3`, `A4`, `E5`–`E9`; `e2e/playthrough.spec.ts`                              |
-| **CT05** Review progress: history, final cash, stock at cost, gain/loss, stop after day 5                            | `run.ts › summary`, `isComplete`; `finalCard.ts`; `app.ts › refreshReceipts`                                                          | `run.test.ts › summary`, `A6`; acceptance `A6`, `E11`, `E12`; `e2e/playthrough.spec.ts`                            |
-| **CT R1** Demand 10 / 5 / 0                                                                                          | `demand.ts › demand`                                                                                                                  | `demand.test.ts`; acceptance `demandCases`, `E5`                                                                   |
-| **CT R2** Sold = smaller of demand and stock; leftovers carry over                                                   | `run.ts › tradeLine` (`Math.min`) and `stockAfter`                                                                                    | `run.test.ts › A4`; acceptance `A4`, `E6`, `E8`                                                                    |
-| **CT R3** Money in at most 2 decimals; purchases and sales change cash; never negative                               | `input.ts`, `run.ts › buy` (affordability check), `tradeDay`                                                                          | `input.test.ts`; acceptance input tables; `properties.test.ts`                                                     |
-| **CT R4** Gross profit = revenue − cost of units sold; gain = cash + stock at cost − €100; no double deduction       | `run.ts › tradeLine`, `summary`                                                                                                       | `run.test.ts › "does not take the cost of stock out of the till a second time"`; `playthrough.test.ts`             |
-| **CT R5** One day per trade, recorded once, never replayed on reload                                                 | `run.ts › tradeDay` (one record, one step); `runStore.ts › load` is read-only; `shop.ts › commit` saves the day and balances together | `run.test.ts › advances exactly one day…`; acceptance `A5`; `shop.test.ts › A5`, `is atomic`; `e2e/resume.spec.ts` |
+| Requirement / rule                                                                                                   | Implemented in                                                                                                                        | Checked by                                                                                                                     |
+| -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **CT01** Manage a run: show day, cash, stock, progress; confirm before replacing                                     | `run.ts › newRun`, `app.ts › CafeScreen.refresh`, `chalkboard.ts`, `newRunDialog.ts`, `shop.ts › startNewRun`                         | `run.test.ts › newRun`; `app.test.ts › first visit`, `starting a new run`; `e2e/newRun.spec.ts`                                |
+| **CT02** Purchase stock: positive whole quantity, show total, refuse if unaffordable, update cash and stock together | `run.ts › buy`, `input.ts › parseQuantityText`, `shelfCard.ts › refreshOrder`                                                         | `run.test.ts › buy (CT02)`; acceptance `A1`, `E1`–`E3`; `e2e/rules.spec.ts › A1`                                               |
+| **CT03** Set prices: positive price, demand rule visible                                                             | `run.ts › setPrice`, `input.ts › parsePriceText`, `demandPanel.ts`, `shelfCard.ts › refreshPrice`                                     | `run.test.ts › setPrice (CT03)`; acceptance `A2`, `E4`; `e2e/rules.spec.ts › A2`                                               |
+| **CT04** Trade one day: units, revenue, COGS, gross profit per item and total                                        | `run.ts › tradeDay` (with `tradeLine`, `addUp`), `receipt.ts`                                                                         | `run.test.ts › tradeDay`; acceptance `A3`, `A4`, `E5`–`E9`; `e2e/playthrough.spec.ts`                                          |
+| **CT05** Review progress: history, final cash, stock at cost, gain/loss, stop after day 5                            | `run.ts › summary`, `isComplete`; `finalCard.ts`; `app.ts › refreshReceipts`                                                          | `run.test.ts › summary`, `A6`; acceptance `A6`, `E11`, `E12`; `e2e/playthrough.spec.ts`                                        |
+| **CT R1** Demand 10 / 5 / 0                                                                                          | `demand.ts › demand`                                                                                                                  | `demand.test.ts`; acceptance `demandCases`, `E5`                                                                               |
+| **CT R2** Sold = smaller of demand and stock; leftovers carry over                                                   | `run.ts › tradeLine` (`Math.min`) and `stockAfter`                                                                                    | `run.test.ts › A4`; acceptance `A4`, `E6`, `E8`                                                                                |
+| **CT R3** Money in at most 2 decimals; purchases and sales change cash; never negative                               | `input.ts`, `run.ts › buy` (affordability check), `tradeDay`                                                                          | `input.test.ts`; acceptance input tables; `properties.test.ts`                                                                 |
+| **CT R4** Gross profit = revenue − cost of units sold; gain = cash + stock at cost − €100; no double deduction       | `run.ts › tradeLine`, `summary`                                                                                                       | `run.test.ts › "does not take the cost of stock out of the till a second time"`; `playthrough.test.ts`                         |
+| **CT R5** One day per trade, recorded once, never replayed on reload                                                 | `run.ts › tradeDay` (one record, one step); `runStore.ts › load` is read-only; `shop.ts › commit` saves the day and balances together | `run.test.ts › advances exactly one day…`; acceptance `A5`; `shop.test.ts › A5`, `is atomic`; `e2e/resume.spec.ts`             |
+| **Campus events** (version 2): a planned week; each day's event scales demand for the items it names                 | `events.ts › demandOnDay`, `scheduleFromSeed`; `run.ts › tradeDay`, `eventFor`; `saveFormat.ts › migrate`                             | `events.test.ts`; acceptance `E13`, `E14`; `saveFormat.test.ts › migrate`; `app.test.ts › campus events`; `e2e/events.spec.ts` |
 
 ---
 
@@ -248,37 +252,70 @@ Semantic HTML (headings, lists, `<dialog>`, labels for every input), messages an
 
 ---
 
-## 8. Glossary
+## 9. Campus events (version 2, feature owner: Avery)
 
-| Term                               | Meaning                                                                                   |
-| ---------------------------------- | ----------------------------------------------------------------------------------------- |
-| **Run**                            | One five-day game, from €100 to the final results.                                        |
-| **Catalogue / menu**               | The list of products for sale and their fixed numbers.                                    |
-| **Unit cost**                      | What you pay the supplier for one item.                                                   |
-| **Reference price ("fair price")** | The price customers think is fair; demand is measured against it.                         |
-| **Selling price**                  | The price you choose.                                                                     |
-| **Demand**                         | How many customers want an item today: 10, 5 or 0.                                        |
-| **Stock / shelf**                  | How many of each item you have ready to sell.                                             |
-| **Revenue**                        | Money taken from customers: units sold × your price.                                      |
-| **Cost of goods sold (COGS)**      | What the items you sold cost you to buy: units sold × unit cost.                          |
-| **Gross profit**                   | Revenue minus cost of goods sold.                                                         |
-| **Gain or loss**                   | Final cash + leftover stock at cost − €100.                                               |
-| **Cent**                           | One hundredth of a euro; the unit all money is stored in.                                 |
-| **Domain**                         | The rules of the game, separate from saving and the screen.                               |
-| **Pure function**                  | A function whose answer depends only on its inputs and that changes nothing else.         |
-| **Invariant**                      | A promise that must always be true, such as "cash is never negative".                     |
-| **Atomic**                         | All-or-nothing: a change happens completely or not at all.                                |
-| **localStorage**                   | A small notebook each browser keeps per website; it survives closing the tab.             |
-| **JSON**                           | A plain-text way of writing structured data; how the café is saved.                       |
-| **Migration**                      | Upgrading an old save to a newer format.                                                  |
-| **TypeScript**                     | JavaScript with types, which catches many mistakes before the code runs.                  |
-| **Vite**                           | The tool that serves the app while developing and builds the final files.                 |
-| **Vitest**                         | The tool that runs the unit tests.                                                        |
-| **Playwright**                     | A tool that drives a real browser to test the app like a player.                          |
-| **axe-core**                       | An automatic accessibility checker.                                                       |
-| **fast-check**                     | A tool that generates random test cases; "seeded" means the same random cases every time. |
-| **Coverage**                       | How much of the code the tests actually run.                                              |
-| **ESLint / Prettier**              | Tools that check code quality and layout.                                                 |
-| **CI (continuous integration)**    | GitHub running all the checks automatically on every push.                                |
-| **jsdom**                          | A simulated browser used to test screen code quickly without opening Chromium.            |
-| **aria-live**                      | A marker that tells screen readers to announce changes in that part of the page.          |
+**What it is.** Each run now has a week of campus events: exam week, a rainy day, an open day, a big match, a bake sale next door, a heatwave, or an ordinary day. The "Campus news" strip shows today's event and tomorrow's, so you can stock up a day early.
+
+**How an event changes sales, in two steps.**
+
+1. The price decides how many customers would normally come, exactly as before: 10, 5 or 0.
+2. The day's event scales that number for the items it names: ×1.5 (more) or ×0.5 (fewer). Half a customer rounds up.
+
+Example: exam week, flat white at its €2.80 fair price. Normally 10 customers; exam week makes it 15. Price it at €3.00 (above fair) and it's normally 5; exam week makes 7.5, which rounds up to 8.
+
+**Why the week is saved inside the run.** If the game re-picked events every time it opened, reloading would change tomorrow, a cheat and a bug. So the week is chosen once, when the run starts, and saved with everything else. That keeps A5 ("reopen without replay") true.
+
+**Where the randomness lives.** The rulebook still has no randomness. The screen picks one random number, the _seed_, when a run starts. The rules turn a seed into a week using a fixed recipe (an algorithm called mulberry32), so the same seed always gives the same week. Analogy: the screen shuffles a deck once; the rulebook just deals from it in order.
+
+**Old saves still work.** Saves now say `version: 2`. A version 1 save (from before events) is upgraded when it loads: it gets five ordinary days, which is exactly how its days were traded. This is the "migration" the first version prepared for.
+
+**The original game is still there.** An ordinary day follows the brief's rule exactly, and unticking "Include campus events" in New run gives a classic week of five ordinary days. That is why every original acceptance test still passes unchanged.
+
+**Break it on purpose.**
+
+- In `src/domain/events.ts`, change `const MORE = 150;` to `160`. Eight tests fail, including the hand-worked scenario E13.
+- In `adjustDemand`, remove the `+ 50`, so half a customer rounds down instead of up. Five tests fail, including the rounding tests and E13.
+- In `run.ts › tradeDay`, use `eventFor(run, run.currentDay + 1)`, the wrong day. Six tests fail, because receipts no longer match the planned week.
+
+**Likely questions.**
+
+- _Why can't the event change the price tier itself?_ Keeping the two steps separate means the brief's rule is still exactly visible and tested; events only scale its answer.
+- _Isn't random unfair?_ Every player sees the event one day ahead, and the same week can't change once it's chosen. It rewards planning, not luck.
+- _How do you test something random?_ The tests give the rules fixed seeds or fixed weeks, so the outcome is known in advance. One test checks 500 seeds for valid weeks; another plays 300 random games with events and checks every promise still holds.
+
+## 10. Glossary
+
+| Term                               | Meaning                                                                                                   |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| **Run**                            | One five-day game, from €100 to the final results.                                                        |
+| **Catalogue / menu**               | The list of products for sale and their fixed numbers.                                                    |
+| **Unit cost**                      | What you pay the supplier for one item.                                                                   |
+| **Reference price ("fair price")** | The price customers think is fair; demand is measured against it.                                         |
+| **Selling price**                  | The price you choose.                                                                                     |
+| **Demand**                         | How many customers want an item today: 10, 5 or 0.                                                        |
+| **Stock / shelf**                  | How many of each item you have ready to sell.                                                             |
+| **Revenue**                        | Money taken from customers: units sold × your price.                                                      |
+| **Cost of goods sold (COGS)**      | What the items you sold cost you to buy: units sold × unit cost.                                          |
+| **Gross profit**                   | Revenue minus cost of goods sold.                                                                         |
+| **Gain or loss**                   | Final cash + leftover stock at cost − €100.                                                               |
+| **Cent**                           | One hundredth of a euro; the unit all money is stored in.                                                 |
+| **Domain**                         | The rules of the game, separate from saving and the screen.                                               |
+| **Pure function**                  | A function whose answer depends only on its inputs and that changes nothing else.                         |
+| **Invariant**                      | A promise that must always be true, such as "cash is never negative".                                     |
+| **Atomic**                         | All-or-nothing: a change happens completely or not at all.                                                |
+| **localStorage**                   | A small notebook each browser keeps per website; it survives closing the tab.                             |
+| **JSON**                           | A plain-text way of writing structured data; how the café is saved.                                       |
+| **Migration**                      | Upgrading an old save to a newer format.                                                                  |
+| **Campus event**                   | Something happening on campus that day which brings more or fewer customers for some items.               |
+| **Seed**                           | A starting number for a repeatable "random" sequence: the same seed always gives the same week of events. |
+| **TypeScript**                     | JavaScript with types, which catches many mistakes before the code runs.                                  |
+| **Vite**                           | The tool that serves the app while developing and builds the final files.                                 |
+| **Vitest**                         | The tool that runs the unit tests.                                                                        |
+| **Playwright**                     | A tool that drives a real browser to test the app like a player.                                          |
+| **axe-core**                       | An automatic accessibility checker.                                                                       |
+| **fast-check**                     | A tool that generates random test cases; "seeded" means the same random cases every time.                 |
+| **Coverage**                       | How much of the code the tests actually run.                                                              |
+| **ESLint / Prettier**              | Tools that check code quality and layout.                                                                 |
+| **CI (continuous integration)**    | GitHub running all the checks automatically on every push.                                                |
+| **jsdom**                          | A simulated browser used to test screen code quickly without opening Chromium.                            |
+| **aria-live**                      | A marker that tells screen readers to announce changes in that part of the page.                          |

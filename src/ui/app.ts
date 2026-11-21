@@ -3,6 +3,8 @@ import { formatEuros } from "../domain/money";
 import { RUN_LENGTH_DAYS } from "../domain/rules";
 import { daysCompleted, isComplete, summary, type Run } from "../domain/run";
 import { browserStorage, MemoryStorage, RunStore, type KeyValueStorage } from "../storage/runStore";
+import { scheduleFromSeed } from "../domain/events";
+import { CampusNews } from "./campusNews";
 import { Chalkboard } from "./chalkboard";
 import { renderDemandPanel } from "./demandPanel";
 import { el, svgFromMarkup } from "./dom";
@@ -11,7 +13,16 @@ import { logoIcon } from "./icons";
 import { NewRunDialog } from "./newRunDialog";
 import { renderReceipt } from "./receipt";
 import { ShelfCard } from "./shelfCard";
-import { openShop, type ActionOutcome, type Opening, type Shop } from "./shop";
+import { openShop, type ActionOutcome, type Opening, type Shop, type WeekPlanner } from "./shop";
+
+/**
+ * Plans a new week of campus events from a fresh random seed. The randomness lives here on
+ * the screen side; the rules only ever turn a seed into a week, which keeps them testable.
+ */
+const randomWeek: WeekPlanner = () => {
+  const [seed = 0] = crypto.getRandomValues(new Uint32Array(1));
+  return scheduleFromSeed(seed);
+};
 
 const MEMORY_ONLY_NOTICE =
   "This browser isn't letting me save, so your café will only last until you close this page.";
@@ -36,6 +47,9 @@ function howToPlay(): HTMLElement {
       el("li", {}, ["You start with €100.00 and an empty shelf."]),
       el("li", {}, ["Order stock for each item: pick a quantity and press Buy."]),
       el("li", {}, ["Set your selling prices. Check “How customers decide” first."]),
+      el("li", {}, [
+        "Read the campus news: events like exam week change how many customers come. You can see tomorrow's too, so stock up early.",
+      ]),
       el("li", {}, ["Press Open for the day to trade. Your till receipt shows what sold."]),
       el("li", {}, ["Repeat for five days, then see your final results."]),
     ]),
@@ -56,6 +70,7 @@ function describeRun(run: Run): string {
 class CafeScreen {
   private readonly cards: ShelfCard[];
   private readonly chalkboard: Chalkboard;
+  private readonly news: CampusNews;
   private readonly dialog: NewRunDialog;
   private readonly cashValue = el("dd", { "data-testid": "cash" });
   private readonly dayValue = el("dd", { "data-testid": "day" });
@@ -101,8 +116,9 @@ class CafeScreen {
         }),
     );
     this.chalkboard = new Chalkboard(run);
-    this.dialog = new NewRunDialog(() => {
-      this.startNewRun();
+    this.news = new CampusNews(shop.catalogue, run);
+    this.dialog = new NewRunDialog((withEvents) => {
+      this.startNewRun(withEvents);
     });
     const newRunButton = el(
       "button",
@@ -131,6 +147,7 @@ class CafeScreen {
           ]),
           this.chalkboard.element,
         ]),
+        this.news.element,
         this.nextStep,
         this.message,
         this.finalSlot,
@@ -198,8 +215,8 @@ class CafeScreen {
     this.dialog.open(describeRun(this.run));
   }
 
-  private startNewRun(): void {
-    const outcome = this.shop.startNewRun();
+  private startNewRun(withEvents: boolean): void {
+    const outcome = this.shop.startNewRun(withEvents);
     if (outcome.ok) {
       this.selectedDay = null;
       this.cards.forEach((card) => {
@@ -218,6 +235,7 @@ class CafeScreen {
     const onShelf = Object.values(run.stock).reduce((total, units) => total + units, 0);
     this.shelfValue.textContent = String(onShelf);
     this.chalkboard.update(run);
+    this.news.update(run);
     this.cards.forEach((card) => {
       card.update(run);
     });
@@ -354,10 +372,14 @@ function showBrokenMenu(root: HTMLElement, problem: string): void {
   );
 }
 
-/** Starts the game inside `root`, using the browser's storage when it is available. */
+/**
+ * Starts the game inside `root`, using the browser's storage when it is available.
+ * Tests pass their own week planner so the events they trade with are known in advance.
+ */
 export function startApp(
   root: HTMLElement,
   scope: { readonly localStorage: KeyValueStorage },
+  planWeek: WeekPlanner = randomWeek,
 ): void {
   let catalogue: Catalogue;
   try {
@@ -368,5 +390,9 @@ export function startApp(
   }
   const storage = browserStorage(scope);
   const store = new RunStore(storage ?? new MemoryStorage());
-  showOpening(root, openShop(catalogue, store), storage === null ? MEMORY_ONLY_NOTICE : null);
+  showOpening(
+    root,
+    openShop(catalogue, store, planWeek),
+    storage === null ? MEMORY_ONLY_NOTICE : null,
+  );
 }

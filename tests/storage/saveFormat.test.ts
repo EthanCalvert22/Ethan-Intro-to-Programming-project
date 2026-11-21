@@ -33,9 +33,18 @@ describe("writeSave and readSave", () => {
 
   it("stores the whole run, with its version, as one JSON value", () => {
     const data = JSON.parse(writeSave(playedRun())) as Record<string, unknown>;
-    expect(data.version).toBe(1);
+    expect(data.version).toBe(2);
     expect(Object.keys(data).sort()).toEqual(
-      ["cashCents", "currentDay", "history", "prices", "status", "stock", "version"].sort(),
+      [
+        "cashCents",
+        "currentDay",
+        "events",
+        "history",
+        "prices",
+        "status",
+        "stock",
+        "version",
+      ].sort(),
     );
   });
 
@@ -55,7 +64,47 @@ describe("readSave refuses damaged saves with a plain explanation", () => {
     ["a list", "[]", "not in the expected format"],
     ["no version", tamper(({ version: _drop, ...rest }) => rest), "no recognisable version"],
     ["a text version", tamper((data) => ({ ...data, version: "1" })), "no recognisable version"],
-    ["a newer version", tamper((data) => ({ ...data, version: 2 })), "newer version"],
+    ["a newer version", tamper((data) => ({ ...data, version: 3 })), "newer version"],
+    [
+      "no planned events",
+      tamper(({ events: _drop, ...rest }) => rest),
+      "planned events is not a list",
+    ],
+    [
+      "a planned event that is not text",
+      tamper((data) => ({ ...data, events: [1, 2, 3, 4, 5] })),
+      "The event for day 1",
+    ],
+    [
+      "an unknown planned event",
+      tamper((data) => ({
+        ...data,
+        events: ["alien-invasion", ...(data.events as string[]).slice(1)],
+      })),
+      'The event "alien-invasion" is not recognised',
+    ],
+    [
+      "only four planned events",
+      tamper((data) => ({ ...data, events: (data.events as string[]).slice(1) })),
+      "an event for each of the 5 days",
+    ],
+    [
+      "a recorded day without its event",
+      tamper((data) => {
+        const [day] = data.history as Record<string, unknown>[];
+        const { eventId: _drop, ...rest } = day!;
+        return { ...data, history: [rest] };
+      }),
+      "Day 1 in the history event",
+    ],
+    [
+      "a recorded day with a different event from the plan",
+      tamper((data) => {
+        const [day] = data.history as Record<string, unknown>[];
+        return { ...data, history: [{ ...day, eventId: "open-day" }] };
+      }),
+      "does not match the event planned",
+    ],
     ["an unknown status", tamper((data) => ({ ...data, status: "paused" })), "status"],
     ["cash as text", tamper((data) => ({ ...data, cashCents: "100" })), "Cash is not a number"],
     ["negative cash", tamper((data) => ({ ...data, cashCents: -1 })), "Cash must be"],
@@ -146,7 +195,32 @@ describe("readSave refuses damaged saves with a plain explanation", () => {
 
 describe("migrate", () => {
   it("passes a current save through unchanged", () => {
-    const data = { version: 1, anything: "else" };
+    const data = { version: 2, anything: "else" };
     expect(migrate(data)).toBe(data);
+  });
+
+  /** A save exactly as the game wrote it before campus events existed. */
+  function versionOneSave(): Record<string, unknown> {
+    const {
+      events: _events,
+      history,
+      ...rest
+    } = JSON.parse(writeSave(playedRun())) as Record<string, unknown>;
+    const oldHistory = (history as Record<string, unknown>[]).map(
+      ({ eventId: _eventId, ...day }) => day,
+    );
+    return { ...rest, version: 1, history: oldHistory };
+  }
+
+  it("upgrades a save from before events: the run carries on exactly as it was", () => {
+    const read = readSave(JSON.stringify(versionOneSave()), cafe);
+    expect(read).toEqual({ ok: true, run: playedRun() });
+  });
+
+  it("still refuses a damaged old save after upgrading it", () => {
+    const broken = { ...versionOneSave(), history: "lost" };
+    expect(problemWith(JSON.stringify(broken))).toContain("history is not a list");
+    const brokenDay = { ...versionOneSave(), history: ["day one"] };
+    expect(problemWith(JSON.stringify(brokenDay))).toContain("A day in the history");
   });
 });

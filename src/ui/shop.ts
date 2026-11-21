@@ -1,9 +1,11 @@
 import { findProduct, type Catalogue } from "../domain/catalogue";
 import type { ShopErrorKind } from "../domain/errors";
+import { CLASSIC_WEEK, ORDINARY_DAY } from "../domain/events";
 import { formatEuros } from "../domain/money";
 import type { Outcome } from "../domain/result";
 import {
   buy,
+  eventFor,
   isComplete,
   newRun,
   setPrice,
@@ -29,6 +31,12 @@ export type Opening =
   | { readonly kind: "ready"; readonly shop: Shop; readonly notice: string | null }
   | { readonly kind: "damaged"; readonly problem: string; readonly startFresh: () => Opening };
 
+/** Chooses the week of campus events for a new run. */
+export type WeekPlanner = () => readonly string[];
+
+/** Without a planner every run is the classic week: five ordinary days, the original rules. */
+const classicWeek: WeekPlanner = () => CLASSIC_WEEK;
+
 function plural(count: number, word: string): string {
   return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
@@ -40,6 +48,7 @@ export class Shop {
     readonly catalogue: Catalogue,
     private readonly store: RunStore,
     run: Run,
+    private readonly planWeek: WeekPlanner = classicWeek,
   ) {
     this.current = run;
   }
@@ -73,14 +82,20 @@ export class Shop {
       const day = run.history[run.history.length - 1] as DayResult;
       const sold = `sold ${plural(day.totals.unitsSold, "item")} for ${formatEuros(day.totals.revenueCents)}`;
       const ending = isComplete(run) ? " That was the last day. Here are your final results." : "";
-      return `Day ${day.day} is done: ${sold}.${ending}`;
+      const event = day.eventId === ORDINARY_DAY.id ? "" : ` (${eventFor(run, day.day).name})`;
+      return `Day ${day.day} is done${event}: ${sold}.${ending}`;
     });
   }
 
-  /** Only called after the player has confirmed they want to replace the current run. */
-  startNewRun(): ActionOutcome {
-    const fresh: Outcome<Run> = { ok: true, value: newRun(this.catalogue) };
-    return this.commit(fresh, () => "Fresh start! You have €100.00 and an empty shelf.");
+  /**
+   * Only called after the player has confirmed they want to replace the current run.
+   * With campus events the new run gets a freshly planned week; without, the classic week.
+   */
+  startNewRun(withEvents = true): ActionOutcome {
+    const events = withEvents ? this.planWeek() : CLASSIC_WEEK;
+    const fresh: Outcome<Run> = { ok: true, value: newRun(this.catalogue, events) };
+    const mode = withEvents ? "" : " This is a classic week with no campus events.";
+    return this.commit(fresh, () => `Fresh start! You have €100.00 and an empty shelf.${mode}`);
   }
 
   /** Save first, then show: the screen never shows a state that is not safely stored. */
@@ -102,11 +117,16 @@ export class Shop {
   }
 }
 
-function startFreshAfterDamage(catalogue: Catalogue, store: RunStore, raw: string): Opening {
+function startFreshAfterDamage(
+  catalogue: Catalogue,
+  store: RunStore,
+  raw: string,
+  planWeek: WeekPlanner,
+): Opening {
   const retry = (problem: string): Opening => ({
     kind: "damaged",
     problem,
-    startFresh: () => startFreshAfterDamage(catalogue, store, raw),
+    startFresh: () => startFreshAfterDamage(catalogue, store, raw, planWeek),
   });
   const backedUp = store.backUpDamaged(raw);
   if (!backedUp.ok) {
@@ -114,14 +134,14 @@ function startFreshAfterDamage(catalogue: Catalogue, store: RunStore, raw: strin
       `I couldn't keep a backup of the old save, so I haven't replaced it. ${backedUp.problem}`,
     );
   }
-  const run = newRun(catalogue);
+  const run = newRun(catalogue, planWeek());
   const saved = store.save(run);
   if (!saved.ok) {
     return retry(`I couldn't save a fresh run. ${saved.problem}`);
   }
   return {
     kind: "ready",
-    shop: new Shop(catalogue, store, run),
+    shop: new Shop(catalogue, store, run, planWeek),
     notice:
       "I started a fresh run. A copy of the unreadable save is kept in this browser as a backup.",
   };
@@ -131,24 +151,33 @@ function startFreshAfterDamage(catalogue: Catalogue, store: RunStore, raw: strin
  * Opens the café: loads the saved run if there is a good one, starts fresh if there is none,
  * and stops to ask the player if the save cannot be read. Opening never trades or saves.
  */
-export function openShop(catalogue: Catalogue, store: RunStore): Opening {
+export function openShop(
+  catalogue: Catalogue,
+  store: RunStore,
+  planWeek: WeekPlanner = classicWeek,
+): Opening {
   const loaded = store.load(catalogue);
+  const fresh = () => new Shop(catalogue, store, newRun(catalogue, planWeek()), planWeek);
   switch (loaded.kind) {
     case "empty":
-      return { kind: "ready", shop: new Shop(catalogue, store, newRun(catalogue)), notice: null };
+      return { kind: "ready", shop: fresh(), notice: null };
     case "loaded":
-      return { kind: "ready", shop: new Shop(catalogue, store, loaded.run), notice: null };
+      return {
+        kind: "ready",
+        shop: new Shop(catalogue, store, loaded.run, planWeek),
+        notice: null,
+      };
     case "unavailable":
       return {
         kind: "ready",
-        shop: new Shop(catalogue, store, newRun(catalogue)),
+        shop: fresh(),
         notice: `${loaded.problem} You can still play, but your progress may not be kept.`,
       };
     case "damaged":
       return {
         kind: "damaged",
         problem: loaded.problem,
-        startFresh: () => startFreshAfterDamage(catalogue, store, loaded.raw),
+        startFresh: () => startFreshAfterDamage(catalogue, store, loaded.raw, planWeek),
       };
   }
 }

@@ -44,7 +44,26 @@ For each item, every day:
 | above the reference, up to twice it | 5                     |
 | more than twice the reference price | 0                     |
 
-The comparison is done exactly in cents. With a €4.00 reference: €4.00 → 10, €4.01 → 5, €8.00 → 5, €8.01 → 0. There is no randomness.
+The comparison is done exactly in cents. With a €4.00 reference: €4.00 → 10, €4.01 → 5, €8.00 → 5, €8.01 → 0. On an ordinary day that number is final.
+
+## Campus events (version 2)
+
+- Each run has a **week of campus events**, one per day. The week is chosen when the run starts and saved with it, so reloading never changes it.
+- Each day the screen shows **today's event and tomorrow's**. Later days are a surprise.
+- An event **scales the number of customers** for the items it names: to 1.5 times (more customers) or 0.5 times (fewer). Items it doesn't name are unchanged. The price still decides the tier first.
+- Half a customer **rounds up**: 5 × 1.5 = 7.5 becomes 8, and 5 × 0.5 = 2.5 becomes 3. Zero stays zero.
+- A special event happens **at most once per run**; ordinary days can repeat.
+- **New run** can start a **classic week**: five ordinary days, which is exactly the original game.
+
+| Event               | Effect                       |
+| ------------------- | ---------------------------- |
+| Ordinary day        | No change                    |
+| Exam week           | Flat white and brownie × 1.5 |
+| Rainy day           | Toastie × 1.5                |
+| Open day            | Everything × 1.5             |
+| Big match           | Everything × 0.5             |
+| Bake sale next door | Brownie × 0.5                |
+| Heatwave            | Flat white × 0.5             |
 
 ## Trading a day
 

@@ -98,13 +98,25 @@ It also runs the `demandCases`, `priceInputCases` and `quantityInputCases` table
 | axe-core: zero serious or critical issues | `accessibility.spec.ts` (start, invalid price, receipt, final, dialog; light and dark) |
 | Mobile viewport smoke test (360 px)       | `mobile.spec.ts`                                                                       |
 
+## Campus events (version 2) → tests
+
+| What                                                                      | Proven by                                                                                                           |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Event list is valid; ×1.5 / ×0.5 maths; half a customer rounds up         | `tests/domain/events.test.ts`                                                                                       |
+| A seed always gives the same week; weeks vary; no repeated special events | `events.test.ts › scheduleFromSeed` (500 seeds)                                                                     |
+| Trading uses that day's event and the receipt records it                  | `events.test.ts › trading with events`; acceptance `E13`, `E14`                                                     |
+| Every promise still holds with events                                     | `events.test.ts` seeded property test (300 random games); `invariants.ts` checks receipts against the planned week  |
+| Old (version 1) saves upgrade without changing the run                    | `saveFormat.test.ts › migrate`                                                                                      |
+| Campus news, price hints, receipt event, classic-week option              | `tests/ui/app.test.ts › campus events`; `e2e/events.spec.ts` (including a real reload and axe scans in both themes) |
+| The original rules are unchanged on ordinary days                         | every original test and acceptance scenario, which play the classic week                                            |
+
 ## Latest results
 
 Recorded from the final verification run (see the README for how to reproduce).
 
-- **Unit + acceptance:** 13 files, **299 tests passed**, 0 failed.
-- **Coverage:** `src/domain/` **100 %** statements, branches, functions and lines (every file). Overall: 100 % statements, 100 % lines, 100 % functions, 98.9 % branches. The thresholds in `vite.config.ts` fail the run if `src/domain/` drops below 100 % or the total below 90 %.
-- **End-to-end:** **22 tests passed** in headless Chromium against the production build.
+- **Unit + acceptance:** 14 files, **339 tests passed**, 0 failed.
+- **Coverage:** `src/domain/` **100 %** statements, branches, functions and lines (every file). Overall: 100 % statements, 100 % lines, 100 % functions, 98.8 % branches. The thresholds in `vite.config.ts` fail the run if `src/domain/` drops below 100 % or the total below 90 %.
+- **End-to-end:** **28 tests passed** in headless Chromium against the production build.
 - **Lint / format / types:** `eslint --max-warnings 0`, `prettier --check` and `tsc --noEmit` all clean.
 
 The few uncovered branches outside the domain are defensive fallbacks that cannot happen through normal use: `main.ts` when the page has no `#app` element, an unexpected (non-`SaveShapeError`) error while decoding a save, and the `?? productId` name fallback in two Shop messages (the product is always found once the rules have accepted the action).

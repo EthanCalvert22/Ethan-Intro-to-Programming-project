@@ -1,9 +1,9 @@
 import type { Product } from "../domain/catalogue";
-import { demand } from "../domain/demand";
+import { demandOnDay, effectPercent, ORDINARY_DAY } from "../domain/events";
 import { parsePriceText, parseQuantityText } from "../domain/input";
 import { formatEuros, formatPriceForInput } from "../domain/money";
 import { MAX_ORDER_QUANTITY, MAX_PRICE_CENTS } from "../domain/rules";
-import { isComplete, priceOf, stockOf, type Run } from "../domain/run";
+import { eventFor, isComplete, priceOf, stockOf, type Run } from "../domain/run";
 import { el, srOnly, svgFromMarkup } from "./dom";
 import { productIcon } from "./icons";
 
@@ -142,7 +142,7 @@ export class ShelfCard {
         orderForm,
         priceForm,
         el("p", { class: "hint tier-note" }, [
-          `Above ${formatEuros(product.referencePriceCents)} only 5 customers come; above ${twiceReference} nobody does.`,
+          `On an ordinary day: above ${formatEuros(product.referencePriceCents)} only 5 customers come; above ${twiceReference} nobody does.`,
         ]),
       ],
     );
@@ -278,9 +278,17 @@ export class ShelfCard {
     } else if (!parsed.ok) {
       this.priceHint.textContent = parsed.error.message;
     } else {
-      const wanted = customers(demand(parsed.value, this.product.referencePriceCents));
+      const event = eventFor(this.run, this.run.currentDay);
+      const wanted = customers(
+        demandOnDay(
+          parsed.value,
+          this.product.referencePriceCents,
+          effectPercent(event, this.product.id),
+        ),
+      );
+      const because = event.id === ORDINARY_DAY.id ? "" : ` (${event.name})`;
       const pending = parsed.value === saved ? "" : " Press Set price or Enter to use it.";
-      this.priceHint.textContent = `At ${formatEuros(parsed.value)}, ${wanted} will want one each day.${pending}`;
+      this.priceHint.textContent = `At ${formatEuros(parsed.value)}, ${wanted} will want one today${because}.${pending}`;
     }
   }
 
