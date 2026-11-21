@@ -306,9 +306,9 @@ Example: exam week, flat white at its €2.80 fair price. Normally 10 customers;
 
 **Break it on purpose.**
 
-- In `src/domain/highScores.ts › placeScore`, change `>=` to `>`. Ties now push older scores down, and the tie test fails.
-- Change `HIGH_SCORE_LIMIT = 5` to `3`. The top-five tests fail.
-- In `src/ui/app.ts › trade`, move the `this.scores.record(...)` line outside the `if (isComplete(...))` check. Every day of a run now posts a score, and several tests fail.
+- In `src/domain/highScores.ts › placeScore`, change `>=` to `>`. Ties now push older scores down, and the tie test fails (1 test).
+- Change `HIGH_SCORE_LIMIT = 5` to `3`. The top-five tests fail (4 tests).
+- In `src/ui/app.ts › trade`, move the `this.scores.record(...)` line outside the `if (isComplete(...))` check. Every day of a run now posts a score, and 7 tests fail.
 
 **Likely questions.**
 
