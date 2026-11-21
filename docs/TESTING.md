@@ -134,13 +134,23 @@ It also runs the `demandCases`, `priceInputCases` and `quantityInputCases` table
 | Version 3 saves round-trip; version 1 and 2 saves upgrade; broken upgrade data is refused          | `tests/storage/saveFormat.test.ts › saves with upgrades`                                                 |
 | The shop on screen, and in a real browser with a reload; no serious accessibility issues           | `app.test.ts › upgrades shop`, `› buying upgrades`; `e2e/upgrades.spec.ts`                               |
 
+## Results dashboard → tests
+
+| What                                                                                                          | Proven by                                                                         |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Totals, best seller, best day and their tie rules                                                             | `tests/domain/stats.test.ts`                                                      |
+| Result so far always equals the final gain or loss                                                            | `stats.test.ts` seeded random test (200 games with events and upgrades)           |
+| Figures, chart bars (up for profit, down for loss), signed labels and the screen-reader table                 | `tests/ui/app.test.ts › results dashboard`                                        |
+| The dashboard through a real run and reload, matching the Final results card; no serious accessibility issues | `e2e/dashboard.spec.ts`                                                           |
+| Chart colours safe for colour blindness, with enough contrast, in both themes                                 | checked with the data-visualisation colour validator (see `docs/DECISIONS.md` 57) |
+
 ## Latest results
 
 Recorded from the final verification run (see the README for how to reproduce).
 
-- **Unit + acceptance:** 17 files, **421 tests passed**, 0 failed.
-- **Coverage:** `src/domain/` **100 %** statements, branches, functions and lines (every file). Overall: 100 % statements, 100 % lines, 100 % functions, 99.0 % branches. The thresholds in `vite.config.ts` fail the run if `src/domain/` drops below 100 % or the total below 90 %.
-- **End-to-end:** **37 tests passed** in headless Chromium against the production build.
+- **Unit + acceptance:** 18 files, **432 tests passed**, 0 failed.
+- **Coverage:** `src/domain/` **100 %** statements, branches, functions and lines (every file). Overall: 100 % statements, 100 % lines, 100 % functions, 98.6 % branches. The thresholds in `vite.config.ts` fail the run if `src/domain/` drops below 100 % or the total below 90 %.
+- **End-to-end:** **40 tests passed** in headless Chromium against the production build.
 - **Lint / format / types:** `eslint --max-warnings 0`, `prettier --check` and `tsc --noEmit` all clean.
 
 The few uncovered branches outside the domain are defensive fallbacks that cannot happen through normal use: `main.ts` when the page has no `#app` element, an unexpected (non-`SaveShapeError`) error while decoding a save, and the `?? productId` name fallback in two Shop messages (the product is always found once the rules have accepted the action).

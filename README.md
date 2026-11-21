@@ -22,7 +22,7 @@ More screenshots: [start](docs/screenshots/desktop-1-start.png) · [final result
 4. Check **How customers decide**: at or below the fair price, 10 customers come; up to twice it, 5; above that, nobody.
 5. Read the **Campus news**: events like exam week or a rainy day bring more (×1.5) or fewer (×0.5) customers for some items. You can see tomorrow's event too, so stock up a day early. Untick "Include campus events" in **New run** for a classic week.
 6. Visit the **Upgrades Shop** if you like: a loyalty program (+2 customers a day), going viral (+5 for a day) or a supplier deal (15% off stock). Each costs money, so it has to pay for itself.
-7. Press **Open for the day**. You sell the smaller of demand and your stock. Leftovers stay on the shelf.
+7. Press **Open for the day**. You sell the smaller of demand and your stock. Leftovers stay on the shelf. **Your week so far** then shows your profit by day, your best seller and your result so far.
 8. Repeat until day 5, then read your **Final results**. Your best five runs go on the **High scores** board, with the date. **New run** starts over (after asking) and keeps your high scores.
 
 | Item       | Unit cost | Fair (reference) price |
@@ -69,7 +69,7 @@ npx playwright install --with-deps chromium
 npm run test:e2e
 ```
 
-What a pass looks like: `npm test` ends with `Tests 299 passed (299)` and a coverage table with no `ERROR` lines, and `npm run test:e2e` ends with `22 passed`. `npm run screenshots` regenerates the images in `docs/screenshots/`.
+What a pass looks like: `npm test` ends with `Tests 432 passed (432)` and a coverage table with no `ERROR` lines, and `npm run test:e2e` ends with `40 passed`. `npm run screenshots` regenerates the images in `docs/screenshots/`.
 
 CI (GitHub Actions, [`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs all of these on every push and pull request, on Node 20 and 22.
 

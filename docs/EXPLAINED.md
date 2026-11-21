@@ -8,6 +8,8 @@ This guide explains the whole project in everyday language: what it does, how ea
 
 **The game.** You run a small campus café for five days. You start with €100 and an empty shelf. Each day you buy stock (flat whites, toasties, brownies), choose your prices, and press **Open for the day**. Customers decide whether your prices are fair, you sell what you can, and the till prints a receipt. After day five you see whether you made or lost money.
 
+**Version 2 improvements.** The team added four features on top of the first release: **campus events** (Avery, section 8), **high scores** (Gina, section 9), an **upgrades shop** (Viktoria, section 10) and a **results dashboard** (Ethan, section 11). With a classic week and no upgrades, the game still plays exactly by the original brief.
+
 **Three layers, like a real shop.**
 
 | Layer      | Folder         | Analogy             | Its one job                                                                                        |
@@ -71,6 +73,7 @@ One small class, the **Shop** (`src/ui/shop.ts`), sits at the counter between th
 | `events.ts`     | **Campus events (version 2):** the list of events, how an event scales the number of customers, and how a seed becomes a repeatable week of events.        |
 | `highScores.ts` | **High scores:** what a score is, how a new score finds its place in the top five, and the promises a saved board must keep.                               |
 | `upgrades.ts`   | **Upgrades shop:** the three upgrades, buying one, which are active on a day, the bonus they add, and the supplier rate.                                   |
+| `stats.ts`      | **Results dashboard:** the week at a glance (totals, upgrade spending, result so far, best seller, best day), worked out from the recorded days.           |
 | `errors.ts`     | The five reasons the café can say no (`NotAffordable`, `InvalidQuantity`, `InvalidPrice`, `UnknownProduct`, `RunCompleted`), each with a friendly message. |
 | `result.ts`     | The "answer envelope": either `{ ok: true, value }` or `{ ok: false, error }`. Nothing in the rulebook ever crashes on bad input.                          |
 | `input.ts`      | Turns what the player typed (`"4,50"`, `" 12 "`) into whole numbers, or explains what is wrong.                                                            |
@@ -96,6 +99,7 @@ One small class, the **Shop** (`src/ui/shop.ts`), sits at the counter between th
 | `campusNews.ts`      | **Campus events:** the "Campus news" strip showing today's and tomorrow's event and the items each one affects.                                                          |
 | `highScoresPanel.ts` | **High scores:** the side panel listing the best five runs, recording a run when it finishes, and the two-step "Clear high scores".                                      |
 | `upgradesShop.ts`    | **Upgrades shop:** the side panel where upgrades are bought, with each one's status (available, active, used, bought).                                                   |
+| `dashboard.ts`       | **Results dashboard:** the "Your week so far" panel with its headline figures, the gross-profit-by-day chart and a screen-reader table.                                  |
 | `receipt.ts`         | Draws one day's results as a till receipt.                                                                                                                               |
 | `demandPanel.ts`     | The always-visible "How customers decide" panel with its three-step picture.                                                                                             |
 | `finalCard.ts`       | The "Final results" card with an encouraging message for a gain, a loss, or breaking even.                                                                               |
@@ -107,25 +111,26 @@ One small class, the **Shop** (`src/ui/shop.ts`), sits at the counter between th
 
 ### `tests/` and `e2e/`
 
-| File                                                                  | What it checks                                                                                                                                  |
-| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tests/helpers.ts`                                                    | Shared test tools, including `CountingStorage`, a fake browser storage that counts every write.                                                 |
-| `tests/acceptance.test.ts`                                            | Runs everything in `spec/acceptance.json`.                                                                                                      |
-| `tests/domain/demand.test.ts`                                         | The demand rule and its exact boundaries.                                                                                                       |
-| `tests/domain/input.test.ts`                                          | Reading typed quantities and prices; money formatting.                                                                                          |
-| `tests/domain/run.test.ts`                                            | Buying, pricing, trading, the end of the run, the final summary.                                                                                |
-| `tests/domain/catalogue*.test.ts`                                     | Menu validation, including what happens if the menu file is broken.                                                                             |
-| `tests/domain/invariants.test.ts`                                     | That each kind of broken café state is caught.                                                                                                  |
-| `tests/domain/properties.test.ts`                                     | Thousands of random action sequences: the promises always hold.                                                                                 |
-| `tests/domain/playthrough.test.ts`                                    | A full five-day game worked out by hand, and an independent reconciliation.                                                                     |
-| `tests/domain/events.test.ts`                                         | **Campus events:** the event list, the ×1.5 / ×0.5 maths and rounding, repeatable weeks, trading with events, and random games with events.     |
-| `tests/domain/highScores.test.ts`, `tests/storage/scoreStore.test.ts` | **High scores:** scoring, ranking, ties, the top-five limit, a seeded random test, saving and damaged boards.                                   |
-| `tests/domain/upgrades.test.ts`                                       | **Upgrades shop:** buying, bonuses, Go Viral expiring, the supplier rate and mixed stock costs, upgrades with events, and a seeded random test. |
-| `tests/storage/*.test.ts`                                             | Saving, loading, damaged saves, full or blocked storage.                                                                                        |
-| `tests/ui/shop.test.ts`                                               | Save-then-show, no writes on refusals, atomicity when a save fails, startup paths.                                                              |
-| `tests/ui/app.test.ts`                                                | The real screen code in a simulated browser: every button, message and state.                                                                   |
-| `e2e/*.spec.ts`                                                       | The real built app in real Chromium: full run, reloads, dialog, keyboard, accessibility scan, phone.                                            |
-| `e2e/screenshots.spec.ts`                                             | Takes the screenshots in `docs/screenshots/`.                                                                                                   |
+| File                                                                  | What it checks                                                                                                                                                    |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/helpers.ts`                                                    | Shared test tools, including `CountingStorage`, a fake browser storage that counts every write.                                                                   |
+| `tests/acceptance.test.ts`                                            | Runs everything in `spec/acceptance.json`.                                                                                                                        |
+| `tests/domain/demand.test.ts`                                         | The demand rule and its exact boundaries.                                                                                                                         |
+| `tests/domain/input.test.ts`                                          | Reading typed quantities and prices; money formatting.                                                                                                            |
+| `tests/domain/run.test.ts`                                            | Buying, pricing, trading, the end of the run, the final summary.                                                                                                  |
+| `tests/domain/catalogue*.test.ts`                                     | Menu validation, including what happens if the menu file is broken.                                                                                               |
+| `tests/domain/invariants.test.ts`                                     | That each kind of broken café state is caught.                                                                                                                    |
+| `tests/domain/properties.test.ts`                                     | Thousands of random action sequences: the promises always hold.                                                                                                   |
+| `tests/domain/playthrough.test.ts`                                    | A full five-day game worked out by hand, and an independent reconciliation.                                                                                       |
+| `tests/domain/events.test.ts`                                         | **Campus events:** the event list, the ×1.5 / ×0.5 maths and rounding, repeatable weeks, trading with events, and random games with events.                       |
+| `tests/domain/highScores.test.ts`, `tests/storage/scoreStore.test.ts` | **High scores:** scoring, ranking, ties, the top-five limit, a seeded random test, saving and damaged boards.                                                     |
+| `tests/domain/upgrades.test.ts`                                       | **Upgrades shop:** buying, bonuses, Go Viral expiring, the supplier rate and mixed stock costs, upgrades with events, and a seeded random test.                   |
+| `tests/domain/stats.test.ts`                                          | **Results dashboard:** totals, best seller and best day (with ties), upgrade spending, and a seeded test that the result so far always matches the final summary. |
+| `tests/storage/*.test.ts`                                             | Saving, loading, damaged saves, full or blocked storage.                                                                                                          |
+| `tests/ui/shop.test.ts`                                               | Save-then-show, no writes on refusals, atomicity when a save fails, startup paths.                                                                                |
+| `tests/ui/app.test.ts`                                                | The real screen code in a simulated browser: every button, message and state.                                                                                     |
+| `e2e/*.spec.ts`                                                       | The real built app in real Chromium: full run, reloads, dialog, keyboard, accessibility scan, phone.                                                              |
+| `e2e/screenshots.spec.ts`                                             | Takes the screenshots in `docs/screenshots/`.                                                                                                                     |
 
 ---
 
@@ -146,6 +151,7 @@ One small class, the **Shop** (`src/ui/shop.ts`), sits at the counter between th
 | **Campus events** (version 2): a planned week; each day's event scales demand for the items it names                 | `events.ts › demandOnDay`, `scheduleFromSeed`; `run.ts › tradeDay`, `eventFor`; `saveFormat.ts › migrate`                             | `events.test.ts`; acceptance `E13`, `E14`; `saveFormat.test.ts › migrate`; `app.test.ts › campus events`; `e2e/events.spec.ts`          |
 | **High scores**: best five finished runs, recorded once, kept across runs                                            | `highScores.ts › scoreFromRun`, `placeScore`, `findBoardProblem`; `scoreStore.ts`; `highScoresPanel.ts › record`                      | `highScores.test.ts`; `scoreStore.test.ts`; `app.test.ts › high scores`; `e2e/highscores.spec.ts`                                       |
 | **Upgrades shop** (version 3): bonuses after events, only for items with customers; supplier rate                    | `upgrades.ts › buyUpgrade`, `upgradeBonus`, `orderUnitCost`; `run.ts › customersFor`, `inventoryCostCents`                            | `upgrades.test.ts`; acceptance `E15`; `saveFormat.test.ts › saves with upgrades`; `app.test.ts › upgrades shop`; `e2e/upgrades.spec.ts` |
+| **Results dashboard**: the week so far, with profit by day                                                           | `stats.ts › weekStats`; `dashboard.ts`                                                                                                | `stats.test.ts`; `app.test.ts › results dashboard`; `e2e/dashboard.spec.ts`                                                             |
 
 ---
 
@@ -196,8 +202,8 @@ The same tiny errors hit the demand rule. It has to tell €4.00 (10 customers) 
 
 ```bash
 npm ci                 # install the exact tool versions (once)
-npm test               # 299 tests; prints a coverage table. Pass = "Tests 299 passed" and no ERROR lines
-npm run test:e2e       # 22 browser tests. Pass = "22 passed"
+npm test               # 432 tests; prints a coverage table. Pass = "Tests 432 passed" and no ERROR lines
+npm run test:e2e       # 40 browser tests. Pass = "40 passed"
 npm run lint           # no output after the command line = pass
 npm run format:check   # "All matched files use Prettier code style!"
 npm run typecheck      # no output = pass
@@ -261,7 +267,7 @@ Semantic HTML (headings, lists, `<dialog>`, labels for every input), messages an
 
 ---
 
-## 9. Campus events (version 2, feature owner: Avery)
+## 8. Campus events (version 2, feature owner: Avery)
 
 **What it is.** Each run now has a week of campus events: exam week, a rainy day, an open day, a big match, a bake sale next door, a heatwave, or an ordinary day. The "Campus news" strip shows today's event and tomorrow's, so you can stock up a day early.
 
@@ -292,7 +298,7 @@ Example: exam week, flat white at its €2.80 fair price. Normally 10 customers;
 - _Isn't random unfair?_ Every player sees the event one day ahead, and the same week can't change once it's chosen. It rewards planning, not luck.
 - _How do you test something random?_ The tests give the rules fixed seeds or fixed weeks, so the outcome is known in advance. One test checks 500 seeds for valid weeks; another plays 300 random games with events and checks every promise still holds.
 
-## 10. High scores (feature owner: Gina)
+## 9. High scores (feature owner: Gina)
 
 **What it is.** The game remembers your best five finished runs, across runs, with the date and whether the week had campus events. The Final results card tells you how the run did: "New personal best!", "That's number 3 on your high scores", or "Not in your top five this time".
 
@@ -320,7 +326,7 @@ Example: exam week, flat white at its €2.80 fair price. Normally 10 customers;
 - _Why gain or loss and not final cash?_ Final cash ignores leftover stock, so it would rank a run lower just for holding stock.
 - _Why save nothing when a score misses the top five?_ The board didn't change, so there's nothing to save. The tests count storage writes to prove it.
 
-## 11. Upgrades shop (feature owner: Viktoria)
+## 10. Upgrades shop (feature owner: Viktoria)
 
 **What it is.** A shop of three upgrades, each bought once per run: the **Student Loyalty Program** (€15, +2 customers per item every day), **Go Viral** (€20, +5 customers per item for one day) and the **Supplier Partnership** (€25, 15% off stock you order afterwards). Viktoria designed and built it on her own branch, then it was combined with campus events and high scores.
 
@@ -349,6 +355,30 @@ Example: exam week, flat white at its fair price, with the loyalty program: 10 �
 - _Why add the bonus after the event, not before?_ So the upgrade always does exactly what the shop promises: +2 is always +2.
 - _Why can't a bonus help an item priced above twice its fair price?_ The brief says such items get no customers. Keeping that true makes the rules easier to trust and explain.
 - _Doesn't the supplier discount break the profit maths?_ No. Each unit's real cost is tracked, so cost of goods sold, gross profit and leftover stock are still exact to the cent. A seeded random test of 300 games checks that the result only changes by each day's gross profit, minus exactly what each upgrade cost.
+
+## 11. Results dashboard (feature owner: Ethan)
+
+**What it is.** A "Your week so far" panel under the shelf. After the first day it shows five figures: gross profit so far, money spent on upgrades, the result so far, the best-selling item and the best day. Below them, a bar chart shows each day's gross profit.
+
+**Why "result so far" is trustworthy.** It is gross profit minus upgrade spending. Buying stock swaps cash for stock of the same value, so it doesn't change the result; trading adds the day's gross profit; upgrades take away exactly what they cost. So the dashboard's result always equals the overall gain or loss, mid-run and on the Final results card. A seeded random test checks that after every action in 200 random games.
+
+**How the chart is drawn.** It is plain SVG built by the code, no chart library. Each traded day gets a bar: up from the zero line for a profit, down for a loss, sized to the largest amount, with the signed amount written beside it. Days not yet traded show as empty slots. When there is a loss, the chart leaves room under the zero line for its label so it never collides with the day names (a problem found in a screenshot check and fixed).
+
+**Why blue and terracotta, not green and red.** The colours were run through a colour-blindness checker. Green and red failed, since many colour-blind people see them as the same colour. Blue and terracotta passed in both light and dark mode. Even so, the chart never relies on colour: direction and the + or − sign say the same thing.
+
+**For screen readers.** A hidden table lists each day's event, units sold, revenue and gross profit. (It sits inside a hidden box, because a hidden table on its own still stretched the page sideways on phones. The 360 px phone test caught that.)
+
+**Break it on purpose.**
+
+- In `src/domain/stats.ts`, change `resultSoFarCents: totalGrossProfitCents - upgradeSpendCents` to just `totalGrossProfitCents`. The upgrade tests and the "always agrees with the final summary" test fail (3 tests).
+- Change `entry.units > best.units` to `entry.units >= best.units`. Ties now go to the last item on the menu, and the tie test fails (1 test).
+- In `src/ui/dashboard.ts`, remove `- (lowest < 0 ? LOSS_LABEL_SPACE : 0)`. No test fails, but the loss label overlaps "Day 2" on screen. That is why the chart was also checked by eye.
+
+**Likely questions.**
+
+- _Why not use a chart library?_ Five bars don't need one, and the project uses no frameworks; plain SVG keeps every line explainable.
+- _How do you know the dashboard's numbers are right?_ They come from the recorded receipts, and the result so far is tested against the official summary after every action.
+- _Is the chart accessible?_ Direction, signs and text labels carry the meaning, the colours passed a colour-blindness check, and a table repeats the numbers for screen readers.
 
 ## 12. Glossary
 
@@ -379,6 +409,8 @@ Example: exam week, flat white at its fair price, with the loyalty program: 10 �
 | **Tie**                            | Two runs with exactly the same result; the older one stays above.                                         |
 | **Upgrade**                        | Something bought once per run that brings more customers or cheaper stock; it costs cash.                 |
 | **Supplier rate**                  | The discounted unit cost (85%) after the Supplier Partnership.                                            |
+| **Result so far**                  | Gross profit so far minus upgrade spending; always equal to the overall gain or loss.                     |
+| **Best seller**                    | The item with the most units sold this run.                                                               |
 | **TypeScript**                     | JavaScript with types, which catches many mistakes before the code runs.                                  |
 | **Vite**                           | The tool that serves the app while developing and builds the final files.                                 |
 | **Vitest**                         | The tool that runs the unit tests.                                                                        |
