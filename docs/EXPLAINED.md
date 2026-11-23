@@ -53,6 +53,7 @@ One small class, the **Shop** (`src/ui/shop.ts`), sits at the counter between th
 | `playwright.screenshots.config.ts`    | Same, but only for the script that takes the README screenshots.                                                 |
 | `.gitignore`                          | Keeps generated folders (`node_modules`, `dist`, `coverage`, reports) out of git.                                |
 | `.github/workflows/ci.yml`            | Continuous integration: on every push, GitHub runs lint, format check, type check, unit tests and browser tests. |
+| `.github/workflows/pages.yml`         | Publishes the game with GitHub Pages after every change to `main`, so anyone can play it from a web link.        |
 
 ### `spec/` — the specification
 
