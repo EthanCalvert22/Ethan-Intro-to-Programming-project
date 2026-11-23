@@ -61,6 +61,7 @@ describe("findRunProblem", () => {
     ["day 0", { ...run, currentDay: 0, history: [] }],
     ["day 6", { ...run, currentDay: 6 }],
     ["negative stock", { ...run, stock: { ...run.stock, lemonade: -1 } }],
+    ["discounted stock missing an item", { ...run, discountedStock: { lemonade: 0 } }],
     ["missing stock entry", { ...run, stock: { lemonade: 1, cookie: 1 } }],
     ["stock for an unknown product", { ...run, stock: { ...run.stock, espresso: 1 } }],
     ["a zero price", { ...run, prices: { ...run.prices, cookie: 0 } }],

@@ -184,6 +184,82 @@ describe("buying stock", () => {
   });
 });
 
+describe("buying upgrades", () => {
+  it("keeps the cash and demand unchanged when an upgrade cannot be saved", () => {
+    start();
+    storage.failWrites = true;
+    const viral = button(/^Buy Go Viral/);
+    viral.click();
+    expect(testId("message")).toContain("I couldn't save that");
+    expect(testId("cash")).toBe("€100.00");
+    expect(viral.disabled).toBe(false);
+    expect(text("#price-hint-toastie")).toContain("10 customers");
+  });
+
+  it("disables upgrades when unaffordable and makes them available again on a new run", () => {
+    start();
+    buy("toastie", 46);
+    const loyalty = button(/^Buy Student Loyalty Program/);
+    expect(loyalty.disabled).toBe(true);
+    expect(text("#upgrade-status-loyalty-program")).toBe("Not enough cash");
+    button("New run").click();
+    closeDialog("confirm");
+    expect(loyalty.disabled).toBe(false);
+  });
+});
+
+describe("upgrades shop", () => {
+  it("buys an upgrade, says what it cost, and counts its bonus in the price hints", () => {
+    start();
+    button(/^Buy Student Loyalty Program/).click();
+    expect(testId("message")).toBe(
+      "Bought Student Loyalty Program for €15.00. €85.00 left in the till.",
+    );
+    expect(text("#upgrade-status-loyalty-program")).toBe("Active for the rest of this run");
+    expect(button("Bought Student Loyalty Program").disabled).toBe(true);
+    expect(text("#price-hint-toastie")).toBe(
+      "At €4.50, 12 customers will want one today (Student Loyalty Program +2).",
+    );
+  });
+
+  it("names both the event and the upgrade, and leaves priced-out items alone", () => {
+    start(() => ["exam-week", "ordinary-day", "ordinary-day", "ordinary-day", "ordinary-day"]);
+    button(/^Buy Student Loyalty Program/).click();
+    expect(text("#price-hint-flat-white")).toBe(
+      "At €2.80, 17 customers will want one today (Exam week, Student Loyalty Program +2).",
+    );
+    type(priceInput("brownie"), "3.61");
+    expect(text("#price-hint-brownie")).toBe(
+      "At €3.61, no customers will want one today (Exam week). Press Set price or Enter to use it.",
+    );
+  });
+
+  it("shows Go Viral as active today, then used after the trade", () => {
+    start();
+    button(/^Buy Go Viral/).click();
+    expect(text("#upgrade-status-go-viral")).toBe("Active today");
+    openButton().click();
+    expect(text("#upgrade-status-go-viral")).toBe("Used");
+  });
+
+  it("shows the supplier rate on new orders", () => {
+    start();
+    button(/^Buy Supplier Partnership/).click();
+    expect(text("article[data-product='toastie'] .product-facts")).toBe(
+      "Costs you €1.70 (supplier rate) · Fair price €4.50",
+    );
+    type(quantityInput("toastie"), "10");
+    expect(text("#order-total-toastie")).toBe("Total cost: €17.00");
+  });
+
+  it("closes the shop when the run is over", () => {
+    start();
+    playFiveDays();
+    expect(text("#upgrade-status-go-viral")).toBe("Run complete");
+    expect(button(/^Buy Go Viral/).disabled).toBe(true);
+  });
+});
+
 describe("setting prices", () => {
   it("describes demand live and sets the price on submit", () => {
     start();
@@ -472,6 +548,7 @@ describe("small building blocks", () => {
         lines: [
           {
             productId: "mystery",
+            discountedUnitsSold: 0,
             priceCents: 100,
             demand: 10,
             unitsSold: 0,

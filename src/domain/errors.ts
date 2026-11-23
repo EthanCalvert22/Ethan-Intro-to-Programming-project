@@ -3,7 +3,13 @@ import { MAX_ORDER_QUANTITY, MAX_PRICE_CENTS } from "./rules";
 
 /** Every reason the café can refuse an action. Each comes with a message for the player. */
 export type ShopErrorKind =
-  "NotAffordable" | "InvalidQuantity" | "InvalidPrice" | "UnknownProduct" | "RunCompleted";
+  | "NotAffordable"
+  | "InvalidQuantity"
+  | "InvalidPrice"
+  | "UnknownProduct"
+  | "RunCompleted"
+  | "UnknownUpgrade"
+  | "UpgradeAlreadyPurchased";
 
 export interface ShopError {
   readonly kind: ShopErrorKind;
@@ -28,6 +34,20 @@ export function unknownProduct(productId: string): ShopError {
   return {
     kind: "UnknownProduct",
     message: `I couldn't find "${productId}" on the menu.`,
+  };
+}
+
+export function unknownUpgrade(upgradeId: string): ShopError {
+  return {
+    kind: "UnknownUpgrade",
+    message: `I couldn't find the "${upgradeId}" upgrade in the shop.`,
+  };
+}
+
+export function upgradeAlreadyBought(upgradeName: string): ShopError {
+  return {
+    kind: "UpgradeAlreadyPurchased",
+    message: `You already bought ${upgradeName} this run. Each upgrade can be bought once.`,
   };
 }
 

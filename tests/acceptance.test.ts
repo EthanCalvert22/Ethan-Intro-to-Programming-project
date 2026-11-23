@@ -26,8 +26,10 @@ interface StateCheck {
 }
 
 interface Step {
-  do: "buy" | "buyText" | "setPrice" | "setPriceText" | "trade" | "restart" | "newRun";
+  do:
+    "buy" | "buyText" | "setPrice" | "setPriceText" | "buyUpgrade" | "trade" | "restart" | "newRun";
   product?: string;
+  upgrade?: string;
   quantity?: number;
   priceCents?: number;
   text?: string;
@@ -93,6 +95,8 @@ function perform(shop: Shop, step: Step): ActionOutcome | "no-action" {
       const parsed = parsePriceText(step.text ?? "");
       return parsed.ok ? shop.setPrice(product, parsed.value) : { ok: false, ...parsed.error };
     }
+    case "buyUpgrade":
+      return shop.buyUpgrade(step.upgrade ?? "");
     case "trade":
       return shop.trade();
     case "newRun":

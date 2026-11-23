@@ -22,6 +22,7 @@ import {
   RUN_LENGTH_DAYS,
   STARTING_CASH_CENTS,
 } from "./rules";
+import { hasSupplierDiscount, orderUnitCost, supplierUnitCost, upgradeBonus } from "./upgrades";
 
 /*
  * The rulebook. Every function here is pure: it takes a run and returns a new run
@@ -38,6 +39,8 @@ export type PriceList = Readonly<Record<string, number>>;
 
 export interface DayLine {
   readonly productId: string;
+  /** How many of the units sold were bought at the supplier rate (they cost less). */
+  readonly discountedUnitsSold: number;
   readonly priceCents: number;
   readonly demand: number;
   readonly unitsSold: number;
@@ -74,10 +77,16 @@ export interface Run {
   readonly currentDay: number;
   readonly cashCents: number;
   readonly stock: Shelf;
+  /** How many of the units on the shelf were bought at the supplier rate. */
+  readonly discountedStock: Shelf;
   readonly prices: PriceList;
   /** The campus event for each of the five days, chosen when the run starts. */
   readonly events: readonly string[];
   readonly history: readonly DayResult[];
+  /** Upgrade ids bought this run, in the order they were bought. */
+  readonly purchasedUpgrades: readonly string[];
+  /** The day each upgrade was bought, which is the first day it works. */
+  readonly upgradePurchaseDays: Readonly<Partial<Record<string, number>>>;
 }
 
 export interface FinalSummary {
@@ -97,16 +106,50 @@ export function newRun(catalogue: Catalogue, events: readonly string[] = CLASSIC
     currentDay: 1,
     cashCents: STARTING_CASH_CENTS,
     stock: Object.fromEntries(catalogue.map((product) => [product.id, 0])),
+    discountedStock: Object.fromEntries(catalogue.map((product) => [product.id, 0])),
     prices: Object.fromEntries(
       catalogue.map((product) => [product.id, product.referencePriceCents]),
     ),
     events: [...events],
     history: [],
+    purchasedUpgrades: [],
+    upgradePurchaseDays: {},
   };
 }
 
 export function stockOf(run: Run, productId: string): number {
   return run.stock[productId] ?? 0;
+}
+
+export function discountedStockOf(run: Run, productId: string): number {
+  return run.discountedStock[productId] ?? 0;
+}
+
+/**
+ * How many customers want an item on a day: the price picks the tier (10, 5 or 0), the day's
+ * campus event scales it, and then active upgrades add their bonus. Bonuses only add to items
+ * that already have customers, so an item priced above twice its fair price still sells nothing.
+ */
+export function customersFor(run: Run, product: Product, priceCents: number, day: number): number {
+  const event = eventFor(run, day);
+  const usual = demandOnDay(
+    priceCents,
+    product.referencePriceCents,
+    effectPercent(event, product.id),
+  );
+  return usual === 0 ? 0 : usual + upgradeBonus(run, day);
+}
+
+/** What units really cost: discounted ones at the supplier rate, the rest at the usual cost. */
+export function inventoryCostCents(
+  product: Product,
+  units: number,
+  discountedUnits: number,
+): number {
+  return (
+    (units - discountedUnits) * product.unitCostCents +
+    discountedUnits * supplierUnitCost(product.unitCostCents)
+  );
 }
 
 export function priceOf(run: Run, product: Product): number {
@@ -150,14 +193,19 @@ export function buy(
   if (quantity > MAX_ORDER_QUANTITY) {
     return refuse(invalidQuantity("tooMany"));
   }
-  const costCents = quantity * product.unitCostCents;
+  const costCents = quantity * orderUnitCost(run, product.unitCostCents);
   if (costCents > run.cashCents) {
     return refuse(notAffordable(costCents, run.cashCents));
   }
+  const discountedBought = hasSupplierDiscount(run) ? quantity : 0;
   return accept({
     ...run,
     cashCents: run.cashCents - costCents,
     stock: { ...run.stock, [productId]: stockOf(run, productId) + quantity },
+    discountedStock: {
+      ...run.discountedStock,
+      [productId]: discountedStockOf(run, productId) + discountedBought,
+    },
   });
 }
 
@@ -187,19 +235,19 @@ export function setPrice(
 }
 
 /** What one product does today: the event scales demand, and sales are capped by stock (CT R2). */
-function tradeLine(run: Run, product: Product, event: CampusEvent): DayLine {
+function tradeLine(run: Run, product: Product): DayLine {
   const priceCents = priceOf(run, product);
-  const wanted = demandOnDay(
-    priceCents,
-    product.referencePriceCents,
-    effectPercent(event, product.id),
-  );
+  const wanted = customersFor(run, product, priceCents, run.currentDay);
   const unitsSold = Math.min(wanted, stockOf(run, product.id));
   const revenueCents = unitsSold * priceCents;
+  // Older, full-price stock sells first; discounted units only once it has run out.
+  const fullPriceStock = stockOf(run, product.id) - discountedStockOf(run, product.id);
+  const discountedUnitsSold = Math.max(0, unitsSold - fullPriceStock);
   // The stock was paid for when it was bought; COGS is reported, not taken from cash again (CT R4).
-  const cogsCents = unitsSold * product.unitCostCents;
+  const cogsCents = inventoryCostCents(product, unitsSold, discountedUnitsSold);
   return {
     productId: product.id,
+    discountedUnitsSold,
     priceCents,
     demand: wanted,
     unitsSold,
@@ -230,7 +278,7 @@ export function tradeDay(run: Run, catalogue: Catalogue): Outcome<Run> {
     return refuse(runCompleted());
   }
   const event = eventFor(run, run.currentDay);
-  const lines = catalogue.map((product) => tradeLine(run, product, event));
+  const lines = catalogue.map((product) => tradeLine(run, product));
   const totals = addUp(lines);
   const cashAfterCents = run.cashCents + totals.revenueCents;
   const stockAfter: Shelf = Object.fromEntries(
@@ -251,6 +299,12 @@ export function tradeDay(run: Run, catalogue: Catalogue): Outcome<Run> {
     currentDay: isLastDay ? run.currentDay : run.currentDay + 1,
     cashCents: cashAfterCents,
     stock: stockAfter,
+    discountedStock: Object.fromEntries(
+      lines.map((line) => [
+        line.productId,
+        discountedStockOf(run, line.productId) - line.discountedUnitsSold,
+      ]),
+    ),
     history: [...run.history, record],
   });
 }
@@ -258,7 +312,9 @@ export function tradeDay(run: Run, catalogue: Catalogue): Outcome<Run> {
 /** The final picture (CT05): cash, stock left at what it cost, and the gain or loss on €100. */
 export function summary(run: Run, catalogue: Catalogue): FinalSummary {
   const remainingStockValueCents = catalogue.reduce(
-    (total, product) => total + stockOf(run, product.id) * product.unitCostCents,
+    (total, product) =>
+      total +
+      inventoryCostCents(product, stockOf(run, product.id), discountedStockOf(run, product.id)),
     0,
   );
   return {

@@ -22,4 +22,4 @@ export const MAX_ORDER_QUANTITY = 1000;
 export const MAX_PRICE_CENTS = 100000;
 
 /** The shape version of a saved run, so the save format can evolve later. */
-export const RUN_FORMAT_VERSION = 2;
+export const RUN_FORMAT_VERSION = 3;

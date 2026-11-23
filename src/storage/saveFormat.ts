@@ -60,6 +60,7 @@ function decodeLine(value: unknown, what: string): DayLine {
   }
   return {
     productId: fields.productId,
+    discountedUnitsSold: asNumber(fields.discountedUnitsSold, `${what} discounted units`),
     priceCents: asNumber(fields.priceCents, `${what} price`),
     demand: asNumber(fields.demand, `${what} demand`),
     unitsSold: asNumber(fields.unitsSold, `${what} units sold`),
@@ -94,6 +95,12 @@ function decodeDay(value: unknown, position: number): DayResult {
   };
 }
 
+function decodeUpgradeIds(value: unknown): readonly string[] {
+  return asList(value, "The bought upgrades").map((id, index) =>
+    asText(id, `Bought upgrade ${index + 1}`),
+  );
+}
+
 function decodeRun(fields: Fields): Run {
   if (fields.status !== "in_progress" && fields.status !== "completed") {
     throw new SaveShapeError("The run status is not recognised.");
@@ -104,11 +111,14 @@ function decodeRun(fields: Fields): Run {
     currentDay: asNumber(fields.currentDay, "The current day"),
     cashCents: asNumber(fields.cashCents, "Cash"),
     stock: asNumberMap(fields.stock, "Stock"),
+    discountedStock: asNumberMap(fields.discountedStock, "Discounted stock"),
     prices: asNumberMap(fields.prices, "Prices"),
     events: asList(fields.events, "The planned events").map((eventId, index) =>
       asText(eventId, `The event for day ${index + 1}`),
     ),
     history: asList(fields.history, "The history").map(decodeDay),
+    purchasedUpgrades: decodeUpgradeIds(fields.purchasedUpgrades),
+    upgradePurchaseDays: asNumberMap(fields.upgradePurchaseDays, "Upgrade purchase days"),
   };
 }
 
@@ -127,11 +137,43 @@ function upgradeFromVersion1(fields: Fields): Fields {
   return { ...fields, version: 2, events: CLASSIC_WEEK, history };
 }
 
+/**
+ * Version 2 saves come from before the upgrades shop. They become version 3 with no
+ * upgrades bought and no discounted stock, and every recorded sale marked as full price,
+ * which is exactly how those days were traded.
+ */
+function upgradeFromVersion2(fields: Fields): Fields {
+  const stock = asFields(fields.stock, "Stock");
+  const history = Array.isArray(fields.history)
+    ? fields.history.map((day: unknown) => {
+        const dayFields = asFields(day, "A day in the history");
+        const lines = Array.isArray(dayFields.lines)
+          ? dayFields.lines.map((line: unknown) => ({
+              ...asFields(line, "A receipt line"),
+              discountedUnitsSold: 0,
+            }))
+          : dayFields.lines;
+        return { ...dayFields, lines };
+      })
+    : fields.history;
+  return {
+    ...fields,
+    version: 3,
+    discountedStock: Object.fromEntries(Object.keys(stock).map((id) => [id, 0])),
+    purchasedUpgrades: [],
+    upgradePurchaseDays: {},
+    history,
+  };
+}
+
 /** Brings older save formats up to date, one version step at a time. */
 export function migrate(data: unknown): Fields {
   let fields = asFields(data, "The save");
   if (fields.version === 1) {
     fields = upgradeFromVersion1(fields);
+  }
+  if (fields.version === 2) {
+    fields = upgradeFromVersion2(fields);
   }
   const version = fields.version;
   if (version === RUN_FORMAT_VERSION) {

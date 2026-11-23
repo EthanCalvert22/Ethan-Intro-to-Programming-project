@@ -7,7 +7,8 @@
     "'state' lists the values to check after the step; stock and prices may list only some products.",
     "'day' checks the receipt of the day just traded; 'lines' are keyed by product id.",
     "The 'brief' catalogue reproduces the numbers used in the brief's acceptance criteria (an item costing €2 with a €4 reference price).",
-    "'start.events' plans the run's week of campus events; without it a scenario plays the classic week (five ordinary days, the original rules)."
+    "'start.events' plans the run's week of campus events; without it a scenario plays the classic week (five ordinary days, the original rules).",
+    "'buyUpgrade' buys an upgrade from the shop by id (version 3)."
   ],
   "catalogues": {
     "brief": [
@@ -1850,6 +1851,183 @@
                 "unitsSold": 5
               }
             }
+          }
+        }
+      ]
+    },
+    {
+      "id": "E15",
+      "title": "Upgrades and campus events together, worked out by hand",
+      "catalogue": "brew-and-byte",
+      "start": {
+        "events": ["exam-week", "ordinary-day", "ordinary-day", "ordinary-day", "ordinary-day"]
+      },
+      "arithmetic": [
+        "Start 10000. Buy Student Loyalty Program (1500) and Supplier Partnership (2500): cash 6000.",
+        "Supplier rate: flat white 120 x 85% = 102. Buy 20 flat whites: 2040, cash 3960, all 20 discounted.",
+        "Day 1, exam week: flat white 10 x 1.5 = 15, + 2 loyalty = 17 customers. Sell 17: revenue 4760, COGS 17 x 102 = 1734, GP 3026. Cash 8720. 3 left.",
+        "Toastie and brownie have no stock, so they sell nothing even though customers come.",
+        "Day 2: buy Go Viral (2000), cash 6720. Flat white 10 + 2 + 5 = 17 customers, only 3 in stock: revenue 840, COGS 306, GP 534. Cash 7560.",
+        "Days 3 to 5: nothing to sell.",
+        "Final: gain = 7560 + 0 - 10000 = -2440 = gross profit 3026 + 534 minus upgrade spending 6000.",
+        "Upgrades are spending: they cost cash, so they lower the result unless they bring in more profit than they cost."
+      ],
+      "steps": [
+        {
+          "do": "buyUpgrade",
+          "upgrade": "loyalty-program",
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 8500
+          }
+        },
+        {
+          "do": "buyUpgrade",
+          "upgrade": "loyalty-program",
+          "expect": {
+            "error": "UpgradeAlreadyPurchased"
+          }
+        },
+        {
+          "do": "buyUpgrade",
+          "upgrade": "time-machine",
+          "expect": {
+            "error": "UnknownUpgrade"
+          }
+        },
+        {
+          "do": "buyUpgrade",
+          "upgrade": "supplier-partnership",
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 6000
+          }
+        },
+        {
+          "do": "buy",
+          "product": "flat-white",
+          "quantity": 20,
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 3960
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "day": 1,
+            "eventId": "exam-week",
+            "lines": {
+              "flat-white": {
+                "demand": 17,
+                "unitsSold": 17,
+                "discountedUnitsSold": 17,
+                "revenueCents": 4760,
+                "cogsCents": 1734,
+                "grossProfitCents": 3026
+              },
+              "toastie": {
+                "demand": 12,
+                "unitsSold": 0
+              }
+            },
+            "cashAfterCents": 8720
+          },
+          "state": {
+            "stock": {
+              "flat-white": 3
+            }
+          }
+        },
+        {
+          "do": "restart",
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 8720,
+            "currentDay": 2
+          }
+        },
+        {
+          "do": "buyUpgrade",
+          "upgrade": "go-viral",
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "cashCents": 6720
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "day": 2,
+            "lines": {
+              "flat-white": {
+                "demand": 17,
+                "unitsSold": 3,
+                "revenueCents": 840,
+                "cogsCents": 306,
+                "grossProfitCents": 534
+              }
+            },
+            "cashAfterCents": 7560
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "day": {
+            "day": 3,
+            "lines": {
+              "flat-white": {
+                "demand": 12,
+                "unitsSold": 0
+              }
+            }
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "do": "trade",
+          "expect": {
+            "ok": true
+          },
+          "state": {
+            "status": "completed",
+            "cashCents": 7560
+          },
+          "summary": {
+            "finalCashCents": 7560,
+            "remainingStockValueCents": 0,
+            "gainLossCents": -2440
+          }
+        },
+        {
+          "do": "buyUpgrade",
+          "upgrade": "go-viral",
+          "expect": {
+            "error": "RunCompleted"
           }
         }
       ]

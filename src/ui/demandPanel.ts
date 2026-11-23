@@ -43,7 +43,7 @@ export function renderDemandPanel(): HTMLElement {
       ),
     ),
     el("p", { class: "hint" }, [
-      "Campus events then scale these numbers for the items they affect, from half to one and a half times: check the campus news. You sell the smaller of: customers who want it, or what is on your shelf. Prices are compared to the exact cent, and leftover stock waits on the shelf for tomorrow.",
+      "Then campus events scale these numbers for the items they affect, from half to one and a half times (check the campus news), and active upgrades add their bonus to any item that already has customers. You sell the smaller of: customers who want it, or what is on your shelf. Prices are compared to the exact cent, and leftover stock waits on the shelf for tomorrow.",
     ]),
   ]);
 }

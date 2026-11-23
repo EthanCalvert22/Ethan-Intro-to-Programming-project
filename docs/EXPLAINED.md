@@ -70,6 +70,7 @@ One small class, the **Shop** (`src/ui/shop.ts`), sits at the counter between th
 | `run.ts`        | The heart of the game: `newRun`, `buy`, `setPrice`, `tradeDay`, `summary`. Each takes the current café and returns a new one, or a refusal.                |
 | `events.ts`     | **Campus events (version 2):** the list of events, how an event scales the number of customers, and how a seed becomes a repeatable week of events.        |
 | `highScores.ts` | **High scores:** what a score is, how a new score finds its place in the top five, and the promises a saved board must keep.                               |
+| `upgrades.ts`   | **Upgrades shop:** the three upgrades, buying one, which are active on a day, the bonus they add, and the supplier rate.                                   |
 | `errors.ts`     | The five reasons the café can say no (`NotAffordable`, `InvalidQuantity`, `InvalidPrice`, `UnknownProduct`, `RunCompleted`), each with a friendly message. |
 | `result.ts`     | The "answer envelope": either `{ ok: true, value }` or `{ ok: false, error }`. Nothing in the rulebook ever crashes on bad input.                          |
 | `input.ts`      | Turns what the player typed (`"4,50"`, `" 12 "`) into whole numbers, or explains what is wrong.                                                            |
@@ -94,6 +95,7 @@ One small class, the **Shop** (`src/ui/shop.ts`), sits at the counter between th
 | `chalkboard.ts`      | The five-day "chalkboard" showing which days are done and which is next.                                                                                                 |
 | `campusNews.ts`      | **Campus events:** the "Campus news" strip showing today's and tomorrow's event and the items each one affects.                                                          |
 | `highScoresPanel.ts` | **High scores:** the side panel listing the best five runs, recording a run when it finishes, and the two-step "Clear high scores".                                      |
+| `upgradesShop.ts`    | **Upgrades shop:** the side panel where upgrades are bought, with each one's status (available, active, used, bought).                                                   |
 | `receipt.ts`         | Draws one day's results as a till receipt.                                                                                                                               |
 | `demandPanel.ts`     | The always-visible "How customers decide" panel with its three-step picture.                                                                                             |
 | `finalCard.ts`       | The "Final results" card with an encouraging message for a gain, a loss, or breaking even.                                                                               |
@@ -105,43 +107,45 @@ One small class, the **Shop** (`src/ui/shop.ts`), sits at the counter between th
 
 ### `tests/` and `e2e/`
 
-| File                                                                  | What it checks                                                                                                                              |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tests/helpers.ts`                                                    | Shared test tools, including `CountingStorage`, a fake browser storage that counts every write.                                             |
-| `tests/acceptance.test.ts`                                            | Runs everything in `spec/acceptance.json`.                                                                                                  |
-| `tests/domain/demand.test.ts`                                         | The demand rule and its exact boundaries.                                                                                                   |
-| `tests/domain/input.test.ts`                                          | Reading typed quantities and prices; money formatting.                                                                                      |
-| `tests/domain/run.test.ts`                                            | Buying, pricing, trading, the end of the run, the final summary.                                                                            |
-| `tests/domain/catalogue*.test.ts`                                     | Menu validation, including what happens if the menu file is broken.                                                                         |
-| `tests/domain/invariants.test.ts`                                     | That each kind of broken café state is caught.                                                                                              |
-| `tests/domain/properties.test.ts`                                     | Thousands of random action sequences: the promises always hold.                                                                             |
-| `tests/domain/playthrough.test.ts`                                    | A full five-day game worked out by hand, and an independent reconciliation.                                                                 |
-| `tests/domain/events.test.ts`                                         | **Campus events:** the event list, the ×1.5 / ×0.5 maths and rounding, repeatable weeks, trading with events, and random games with events. |
-| `tests/domain/highScores.test.ts`, `tests/storage/scoreStore.test.ts` | **High scores:** scoring, ranking, ties, the top-five limit, a seeded random test, saving and damaged boards.                               |
-| `tests/storage/*.test.ts`                                             | Saving, loading, damaged saves, full or blocked storage.                                                                                    |
-| `tests/ui/shop.test.ts`                                               | Save-then-show, no writes on refusals, atomicity when a save fails, startup paths.                                                          |
-| `tests/ui/app.test.ts`                                                | The real screen code in a simulated browser: every button, message and state.                                                               |
-| `e2e/*.spec.ts`                                                       | The real built app in real Chromium: full run, reloads, dialog, keyboard, accessibility scan, phone.                                        |
-| `e2e/screenshots.spec.ts`                                             | Takes the screenshots in `docs/screenshots/`.                                                                                               |
+| File                                                                  | What it checks                                                                                                                                  |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/helpers.ts`                                                    | Shared test tools, including `CountingStorage`, a fake browser storage that counts every write.                                                 |
+| `tests/acceptance.test.ts`                                            | Runs everything in `spec/acceptance.json`.                                                                                                      |
+| `tests/domain/demand.test.ts`                                         | The demand rule and its exact boundaries.                                                                                                       |
+| `tests/domain/input.test.ts`                                          | Reading typed quantities and prices; money formatting.                                                                                          |
+| `tests/domain/run.test.ts`                                            | Buying, pricing, trading, the end of the run, the final summary.                                                                                |
+| `tests/domain/catalogue*.test.ts`                                     | Menu validation, including what happens if the menu file is broken.                                                                             |
+| `tests/domain/invariants.test.ts`                                     | That each kind of broken café state is caught.                                                                                                  |
+| `tests/domain/properties.test.ts`                                     | Thousands of random action sequences: the promises always hold.                                                                                 |
+| `tests/domain/playthrough.test.ts`                                    | A full five-day game worked out by hand, and an independent reconciliation.                                                                     |
+| `tests/domain/events.test.ts`                                         | **Campus events:** the event list, the ×1.5 / ×0.5 maths and rounding, repeatable weeks, trading with events, and random games with events.     |
+| `tests/domain/highScores.test.ts`, `tests/storage/scoreStore.test.ts` | **High scores:** scoring, ranking, ties, the top-five limit, a seeded random test, saving and damaged boards.                                   |
+| `tests/domain/upgrades.test.ts`                                       | **Upgrades shop:** buying, bonuses, Go Viral expiring, the supplier rate and mixed stock costs, upgrades with events, and a seeded random test. |
+| `tests/storage/*.test.ts`                                             | Saving, loading, damaged saves, full or blocked storage.                                                                                        |
+| `tests/ui/shop.test.ts`                                               | Save-then-show, no writes on refusals, atomicity when a save fails, startup paths.                                                              |
+| `tests/ui/app.test.ts`                                                | The real screen code in a simulated browser: every button, message and state.                                                                   |
+| `e2e/*.spec.ts`                                                       | The real built app in real Chromium: full run, reloads, dialog, keyboard, accessibility scan, phone.                                            |
+| `e2e/screenshots.spec.ts`                                             | Takes the screenshots in `docs/screenshots/`.                                                                                                   |
 
 ---
 
 ## 3. Each rule traced to code
 
-| Requirement / rule                                                                                                   | Implemented in                                                                                                                        | Checked by                                                                                                                     |
-| -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| **CT01** Manage a run: show day, cash, stock, progress; confirm before replacing                                     | `run.ts › newRun`, `app.ts › CafeScreen.refresh`, `chalkboard.ts`, `newRunDialog.ts`, `shop.ts › startNewRun`                         | `run.test.ts › newRun`; `app.test.ts › first visit`, `starting a new run`; `e2e/newRun.spec.ts`                                |
-| **CT02** Purchase stock: positive whole quantity, show total, refuse if unaffordable, update cash and stock together | `run.ts › buy`, `input.ts › parseQuantityText`, `shelfCard.ts › refreshOrder`                                                         | `run.test.ts › buy (CT02)`; acceptance `A1`, `E1`–`E3`; `e2e/rules.spec.ts › A1`                                               |
-| **CT03** Set prices: positive price, demand rule visible                                                             | `run.ts › setPrice`, `input.ts › parsePriceText`, `demandPanel.ts`, `shelfCard.ts › refreshPrice`                                     | `run.test.ts › setPrice (CT03)`; acceptance `A2`, `E4`; `e2e/rules.spec.ts › A2`                                               |
-| **CT04** Trade one day: units, revenue, COGS, gross profit per item and total                                        | `run.ts › tradeDay` (with `tradeLine`, `addUp`), `receipt.ts`                                                                         | `run.test.ts › tradeDay`; acceptance `A3`, `A4`, `E5`–`E9`; `e2e/playthrough.spec.ts`                                          |
-| **CT05** Review progress: history, final cash, stock at cost, gain/loss, stop after day 5                            | `run.ts › summary`, `isComplete`; `finalCard.ts`; `app.ts › refreshReceipts`                                                          | `run.test.ts › summary`, `A6`; acceptance `A6`, `E11`, `E12`; `e2e/playthrough.spec.ts`                                        |
-| **CT R1** Demand 10 / 5 / 0                                                                                          | `demand.ts › demand`                                                                                                                  | `demand.test.ts`; acceptance `demandCases`, `E5`                                                                               |
-| **CT R2** Sold = smaller of demand and stock; leftovers carry over                                                   | `run.ts › tradeLine` (`Math.min`) and `stockAfter`                                                                                    | `run.test.ts › A4`; acceptance `A4`, `E6`, `E8`                                                                                |
-| **CT R3** Money in at most 2 decimals; purchases and sales change cash; never negative                               | `input.ts`, `run.ts › buy` (affordability check), `tradeDay`                                                                          | `input.test.ts`; acceptance input tables; `properties.test.ts`                                                                 |
-| **CT R4** Gross profit = revenue − cost of units sold; gain = cash + stock at cost − €100; no double deduction       | `run.ts › tradeLine`, `summary`                                                                                                       | `run.test.ts › "does not take the cost of stock out of the till a second time"`; `playthrough.test.ts`                         |
-| **CT R5** One day per trade, recorded once, never replayed on reload                                                 | `run.ts › tradeDay` (one record, one step); `runStore.ts › load` is read-only; `shop.ts › commit` saves the day and balances together | `run.test.ts › advances exactly one day…`; acceptance `A5`; `shop.test.ts › A5`, `is atomic`; `e2e/resume.spec.ts`             |
-| **Campus events** (version 2): a planned week; each day's event scales demand for the items it names                 | `events.ts › demandOnDay`, `scheduleFromSeed`; `run.ts › tradeDay`, `eventFor`; `saveFormat.ts › migrate`                             | `events.test.ts`; acceptance `E13`, `E14`; `saveFormat.test.ts › migrate`; `app.test.ts › campus events`; `e2e/events.spec.ts` |
-| **High scores**: best five finished runs, recorded once, kept across runs                                            | `highScores.ts › scoreFromRun`, `placeScore`, `findBoardProblem`; `scoreStore.ts`; `highScoresPanel.ts › record`                      | `highScores.test.ts`; `scoreStore.test.ts`; `app.test.ts › high scores`; `e2e/highscores.spec.ts`                              |
+| Requirement / rule                                                                                                   | Implemented in                                                                                                                        | Checked by                                                                                                                              |
+| -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **CT01** Manage a run: show day, cash, stock, progress; confirm before replacing                                     | `run.ts › newRun`, `app.ts › CafeScreen.refresh`, `chalkboard.ts`, `newRunDialog.ts`, `shop.ts › startNewRun`                         | `run.test.ts › newRun`; `app.test.ts › first visit`, `starting a new run`; `e2e/newRun.spec.ts`                                         |
+| **CT02** Purchase stock: positive whole quantity, show total, refuse if unaffordable, update cash and stock together | `run.ts › buy`, `input.ts › parseQuantityText`, `shelfCard.ts › refreshOrder`                                                         | `run.test.ts › buy (CT02)`; acceptance `A1`, `E1`–`E3`; `e2e/rules.spec.ts › A1`                                                        |
+| **CT03** Set prices: positive price, demand rule visible                                                             | `run.ts › setPrice`, `input.ts › parsePriceText`, `demandPanel.ts`, `shelfCard.ts › refreshPrice`                                     | `run.test.ts › setPrice (CT03)`; acceptance `A2`, `E4`; `e2e/rules.spec.ts › A2`                                                        |
+| **CT04** Trade one day: units, revenue, COGS, gross profit per item and total                                        | `run.ts › tradeDay` (with `tradeLine`, `addUp`), `receipt.ts`                                                                         | `run.test.ts › tradeDay`; acceptance `A3`, `A4`, `E5`–`E9`; `e2e/playthrough.spec.ts`                                                   |
+| **CT05** Review progress: history, final cash, stock at cost, gain/loss, stop after day 5                            | `run.ts › summary`, `isComplete`; `finalCard.ts`; `app.ts › refreshReceipts`                                                          | `run.test.ts › summary`, `A6`; acceptance `A6`, `E11`, `E12`; `e2e/playthrough.spec.ts`                                                 |
+| **CT R1** Demand 10 / 5 / 0                                                                                          | `demand.ts › demand`                                                                                                                  | `demand.test.ts`; acceptance `demandCases`, `E5`                                                                                        |
+| **CT R2** Sold = smaller of demand and stock; leftovers carry over                                                   | `run.ts › tradeLine` (`Math.min`) and `stockAfter`                                                                                    | `run.test.ts › A4`; acceptance `A4`, `E6`, `E8`                                                                                         |
+| **CT R3** Money in at most 2 decimals; purchases and sales change cash; never negative                               | `input.ts`, `run.ts › buy` (affordability check), `tradeDay`                                                                          | `input.test.ts`; acceptance input tables; `properties.test.ts`                                                                          |
+| **CT R4** Gross profit = revenue − cost of units sold; gain = cash + stock at cost − €100; no double deduction       | `run.ts › tradeLine`, `summary`                                                                                                       | `run.test.ts › "does not take the cost of stock out of the till a second time"`; `playthrough.test.ts`                                  |
+| **CT R5** One day per trade, recorded once, never replayed on reload                                                 | `run.ts › tradeDay` (one record, one step); `runStore.ts › load` is read-only; `shop.ts › commit` saves the day and balances together | `run.test.ts › advances exactly one day…`; acceptance `A5`; `shop.test.ts › A5`, `is atomic`; `e2e/resume.spec.ts`                      |
+| **Campus events** (version 2): a planned week; each day's event scales demand for the items it names                 | `events.ts › demandOnDay`, `scheduleFromSeed`; `run.ts › tradeDay`, `eventFor`; `saveFormat.ts › migrate`                             | `events.test.ts`; acceptance `E13`, `E14`; `saveFormat.test.ts › migrate`; `app.test.ts › campus events`; `e2e/events.spec.ts`          |
+| **High scores**: best five finished runs, recorded once, kept across runs                                            | `highScores.ts › scoreFromRun`, `placeScore`, `findBoardProblem`; `scoreStore.ts`; `highScoresPanel.ts › record`                      | `highScores.test.ts`; `scoreStore.test.ts`; `app.test.ts › high scores`; `e2e/highscores.spec.ts`                                       |
+| **Upgrades shop** (version 3): bonuses after events, only for items with customers; supplier rate                    | `upgrades.ts › buyUpgrade`, `upgradeBonus`, `orderUnitCost`; `run.ts › customersFor`, `inventoryCostCents`                            | `upgrades.test.ts`; acceptance `E15`; `saveFormat.test.ts › saves with upgrades`; `app.test.ts › upgrades shop`; `e2e/upgrades.spec.ts` |
 
 ---
 
@@ -316,7 +320,37 @@ Example: exam week, flat white at its €2.80 fair price. Normally 10 customers;
 - _Why gain or loss and not final cash?_ Final cash ignores leftover stock, so it would rank a run lower just for holding stock.
 - _Why save nothing when a score misses the top five?_ The board didn't change, so there's nothing to save. The tests count storage writes to prove it.
 
-## 11. Glossary
+## 11. Upgrades shop (feature owner: Viktoria)
+
+**What it is.** A shop of three upgrades, each bought once per run: the **Student Loyalty Program** (€15, +2 customers per item every day), **Go Viral** (€20, +5 customers per item for one day) and the **Supplier Partnership** (€25, 15% off stock you order afterwards). Viktoria designed and built it on her own branch, then it was combined with campus events and high scores.
+
+**How a day's customers are worked out now, in three steps.**
+
+1. The price picks the tier: 10, 5 or 0 (the brief's rule).
+2. The day's campus event scales it: ×1.5 or ×0.5.
+3. Active upgrades add their bonus, but only to items that already have customers.
+
+Example: exam week, flat white at its fair price, with the loyalty program: 10 → 15 → 17. The same flat white priced above €5.60 stays at 0, because bonuses don't rescue a priced-out item.
+
+**Why upgrades lower your result.** An upgrade is spending, like a real café buying a new machine. The brief defines the result as final cash + stock at cost − €100, and upgrades reduce cash. So an upgrade only pays off if it brings in more gross profit than it cost. That's the decision the player has to make.
+
+**How the supplier discount stays exact.** Units bought at the supplier rate are counted separately. When you sell, the older full-price units go first, and the cost of goods sold uses what each unit really cost. Leftover stock at the end is valued the same way. The rate is 85% of the cost, rounded to the cent: a brownie at €0.70 becomes €0.60 (€0.595 rounds up).
+
+**Old saves still work.** Saves are now version 3. A version 2 save (events, no upgrades) or a version 1 save (the original game) is upgraded in steps: no upgrades bought, nothing discounted. That is exactly how those days were traded.
+
+**Break it on purpose.**
+
+- In `src/domain/run.ts › customersFor`, change `usual === 0 ? 0 : usual + upgradeBonus(run, day)` to `usual + upgradeBonus(run, day)`. Priced-out items get customers again, and 3 tests fail.
+- In `src/domain/upgrades.ts`, change `SUPPLIER_RATE_PERCENT = 85` to `80`. The supplier tests and scenario E15 fail (4 tests).
+- In `upgradeAppliesOn`, change `boughtOn === day` to `boughtOn <= day`, so Go Viral never runs out. 3 tests fail.
+
+**Likely questions.**
+
+- _Why add the bonus after the event, not before?_ So the upgrade always does exactly what the shop promises: +2 is always +2.
+- _Why can't a bonus help an item priced above twice its fair price?_ The brief says such items get no customers. Keeping that true makes the rules easier to trust and explain.
+- _Doesn't the supplier discount break the profit maths?_ No. Each unit's real cost is tracked, so cost of goods sold, gross profit and leftover stock are still exact to the cent. A seeded random test of 300 games checks that the result only changes by each day's gross profit, minus exactly what each upgrade cost.
+
+## 12. Glossary
 
 | Term                               | Meaning                                                                                                   |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -343,6 +377,8 @@ Example: exam week, flat white at its €2.80 fair price. Normally 10 customers;
 | **Seed**                           | A starting number for a repeatable "random" sequence: the same seed always gives the same week of events. |
 | **High score board**               | The list of your best five finished runs, kept in your browser across runs.                               |
 | **Tie**                            | Two runs with exactly the same result; the older one stays above.                                         |
+| **Upgrade**                        | Something bought once per run that brings more customers or cheaper stock; it costs cash.                 |
+| **Supplier rate**                  | The discounted unit cost (85%) after the Supplier Partnership.                                            |
 | **TypeScript**                     | JavaScript with types, which catches many mistakes before the code runs.                                  |
 | **Vite**                           | The tool that serves the app while developing and builds the final files.                                 |
 | **Vitest**                         | The tool that runs the unit tests.                                                                        |

@@ -1,7 +1,17 @@
 import type { Catalogue, Product } from "./catalogue";
-import { demandOnDay, effectPercent, findEvent, type CampusEvent } from "./events";
+import { findEvent } from "./events";
 import { MAX_PRICE_CENTS, RUN_LENGTH_DAYS } from "./rules";
-import type { DayLine, DayResult, Run, Shelf } from "./run";
+import {
+  customersFor,
+  discountedStockOf,
+  inventoryCostCents,
+  stockOf,
+  type DayLine,
+  type DayResult,
+  type Run,
+  type Shelf,
+} from "./run";
+import { findUpgrade, hasSupplierDiscount } from "./upgrades";
 
 /*
  * The promises a run must always keep. The tests check them after every action,
@@ -31,18 +41,14 @@ function checkShelf(shelf: Shelf, catalogue: Catalogue, what: string): string | 
   return checkEveryProductListed(shelf, catalogue, what, (units) => isWholeAtLeast(units, 0));
 }
 
-function checkLine(line: DayLine, product: Product, event: CampusEvent): string | null {
+function checkLine(line: DayLine, product: Product, run: Run, day: number): string | null {
   if (line.productId !== product.id) {
     return `a receipt line is for the wrong product.`;
   }
   if (!isWholeAtLeast(line.priceCents, 1)) {
     return `the price of ${product.name} is not valid.`;
   }
-  const expectedDemand = demandOnDay(
-    line.priceCents,
-    product.referencePriceCents,
-    effectPercent(event, product.id),
-  );
+  const expectedDemand = customersFor(run, product, line.priceCents, day);
   if (line.demand !== expectedDemand) {
     return `the demand for ${product.name} does not follow the rule.`;
   }
@@ -52,7 +58,15 @@ function checkLine(line: DayLine, product: Product, event: CampusEvent): string 
   if (line.revenueCents !== line.unitsSold * line.priceCents) {
     return `the revenue for ${product.name} does not add up.`;
   }
-  if (line.cogsCents !== line.unitsSold * product.unitCostCents) {
+  const discounted = line.discountedUnitsSold;
+  if (
+    !isWholeAtLeast(discounted, 0) ||
+    discounted > line.unitsSold ||
+    (discounted > 0 && !hasSupplierDiscount(run, day))
+  ) {
+    return `the discounted units of ${product.name} are not possible.`;
+  }
+  if (line.cogsCents !== inventoryCostCents(product, line.unitsSold, discounted)) {
     return `the cost of goods sold for ${product.name} does not add up.`;
   }
   if (line.grossProfitCents !== line.revenueCents - line.cogsCents) {
@@ -78,15 +92,14 @@ function checkDay(day: DayResult, position: number, run: Run, catalogue: Catalog
     return `${label} is recorded out of order.`;
   }
   // checkEvents has already made sure every planned event exists.
-  const event = findEvent(day.eventId);
-  if (event === undefined || day.eventId !== run.events[position]) {
+  if (findEvent(day.eventId) === undefined || day.eventId !== run.events[position]) {
     return `${label} does not match the event planned for that day.`;
   }
   if (day.lines.length !== catalogue.length) {
     return `${label} does not have one line per product.`;
   }
   for (const [index, product] of catalogue.entries()) {
-    const problem = checkLine(day.lines[index] as DayLine, product, event);
+    const problem = checkLine(day.lines[index] as DayLine, product, run, day.day);
     if (problem !== null) {
       return `${label}: ${problem}`;
     }
@@ -129,6 +142,38 @@ function checkEvents(run: Run): string | null {
   return unknown === undefined ? null : `The event "${unknown}" is not recognised.`;
 }
 
+function checkUpgrades(run: Run): string | null {
+  const bought = run.purchasedUpgrades;
+  if (new Set(bought).size !== bought.length || bought.some((id) => !findUpgrade(id))) {
+    return "Bought upgrades must be known, and each bought only once.";
+  }
+  const days = Object.entries(run.upgradePurchaseDays);
+  const matches =
+    days.length === bought.length &&
+    days.every(
+      ([id, day]) =>
+        bought.includes(id) && day !== undefined && isWholeAtLeast(day, 1) && day <= run.currentDay,
+    );
+  return matches ? null : "The days upgrades were bought don't match the purchases.";
+}
+
+function checkDiscountedStock(run: Run, catalogue: Catalogue): string | null {
+  const shelfProblem = checkShelf(run.discountedStock, catalogue, "Discounted stock");
+  if (shelfProblem !== null) {
+    return shelfProblem;
+  }
+  const tooMany = catalogue.find(
+    (product) => discountedStockOf(run, product.id) > stockOf(run, product.id),
+  );
+  if (tooMany !== undefined) {
+    return `There are more discounted ${tooMany.name} than ${tooMany.name} on the shelf.`;
+  }
+  const anyDiscounted = catalogue.some((product) => discountedStockOf(run, product.id) > 0);
+  return anyDiscounted && !hasSupplierDiscount(run)
+    ? "Discounted stock needs the Supplier Partnership."
+    : null;
+}
+
 /** Returns the first broken promise in a run, or null if the run is sound. */
 export function findRunProblem(run: Run, catalogue: Catalogue): string | null {
   if (!isWholeAtLeast(run.cashCents, 0)) {
@@ -137,7 +182,9 @@ export function findRunProblem(run: Run, catalogue: Catalogue): string | null {
   const problem =
     checkProgress(run) ??
     checkEvents(run) ??
+    checkUpgrades(run) ??
     checkShelf(run.stock, catalogue, "Stock") ??
+    checkDiscountedStock(run, catalogue) ??
     checkEveryProductListed(
       run.prices,
       catalogue,

@@ -16,6 +16,7 @@ import { NewRunDialog } from "./newRunDialog";
 import { renderReceipt } from "./receipt";
 import { ShelfCard } from "./shelfCard";
 import { openShop, type ActionOutcome, type Opening, type Shop, type WeekPlanner } from "./shop";
+import { UpgradesShop } from "./upgradesShop";
 
 /**
  * Plans a new week of campus events from a fresh random seed. The randomness lives here on
@@ -89,6 +90,7 @@ class CafeScreen {
   private readonly cards: ShelfCard[];
   private readonly chalkboard: Chalkboard;
   private readonly news: CampusNews;
+  private readonly upgradesShop: UpgradesShop;
   private readonly dialog: NewRunDialog;
   private readonly cashValue = el("dd", { "data-testid": "cash" });
   private readonly dayValue = el("dd", { "data-testid": "day" });
@@ -141,6 +143,9 @@ class CafeScreen {
     );
     this.chalkboard = new Chalkboard(run);
     this.news = new CampusNews(shop.catalogue, run);
+    this.upgradesShop = new UpgradesShop((upgradeId) => {
+      this.show(this.shop.buyUpgrade(upgradeId));
+    });
     this.dialog = new NewRunDialog((withEvents) => {
       this.startNewRun(withEvents);
     });
@@ -186,6 +191,7 @@ class CafeScreen {
             el("div", { class: "open-bar" }, [this.openButton]),
           ]),
           el("div", { class: "side" }, [
+            this.upgradesShop.element,
             renderDemandPanel(),
             el("section", { class: "panel till-roll", "aria-labelledby": "receipts-title" }, [
               el("h2", { id: "receipts-title" }, ["Till receipts"]),
@@ -265,6 +271,7 @@ class CafeScreen {
     this.shelfValue.textContent = String(onShelf);
     this.chalkboard.update(run);
     this.news.update(run);
+    this.upgradesShop.update(run);
     this.cards.forEach((card) => {
       card.update(run);
     });
