@@ -93,6 +93,11 @@ The comparison is done exactly in cents. With a €4.00 reference: €4.00 → 1
 - **Supplier rate:** unit cost × 85%, rounded to the nearest cent (half a cent up). Units bought at the supplier rate are tracked; older full-price units sell first. Cost of goods sold and leftover stock use what each unit really cost.
 - **Upgrades are spending.** They reduce cash and therefore the overall gain or loss.
 
+## Results dashboard
+
+- From the first traded day, **Your week so far** shows: gross profit so far, money spent on upgrades, the **result so far** (gross profit − upgrade spending, the same as the overall gain or loss), the best-selling item and the best day.
+- A bar chart shows **each day's gross profit**: bars go up for a profit and down for a loss, each labelled with its amount.
+
 ## High scores
 
 - When day 5 is traded, the run's **overall gain or loss** becomes its score.

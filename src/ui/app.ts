@@ -7,6 +7,7 @@ import { ScoreStore } from "../storage/scoreStore";
 import { scheduleFromSeed } from "../domain/events";
 import { CampusNews } from "./campusNews";
 import { Chalkboard } from "./chalkboard";
+import { ResultsDashboard } from "./dashboard";
 import { renderDemandPanel } from "./demandPanel";
 import { el, svgFromMarkup } from "./dom";
 import { renderFinalCard } from "./finalCard";
@@ -91,6 +92,7 @@ class CafeScreen {
   private readonly chalkboard: Chalkboard;
   private readonly news: CampusNews;
   private readonly upgradesShop: UpgradesShop;
+  private readonly dashboard: ResultsDashboard;
   private readonly dialog: NewRunDialog;
   private readonly cashValue = el("dd", { "data-testid": "cash" });
   private readonly dayValue = el("dd", { "data-testid": "day" });
@@ -143,6 +145,7 @@ class CafeScreen {
     );
     this.chalkboard = new Chalkboard(run);
     this.news = new CampusNews(shop.catalogue, run);
+    this.dashboard = new ResultsDashboard(shop.catalogue, run);
     this.upgradesShop = new UpgradesShop((upgradeId) => {
       this.show(this.shop.buyUpgrade(upgradeId));
     });
@@ -181,14 +184,17 @@ class CafeScreen {
         this.message,
         this.finalSlot,
         el("div", { class: "layout" }, [
-          el("section", { class: "shelf", "aria-labelledby": "shelf-title" }, [
-            el("h2", { id: "shelf-title", tabindex: "-1" }, ["The shelf"]),
-            el(
-              "div",
-              { class: "shelf-cards" },
-              this.cards.map((card) => card.element),
-            ),
-            el("div", { class: "open-bar" }, [this.openButton]),
+          el("div", { class: "main-column" }, [
+            el("section", { class: "shelf", "aria-labelledby": "shelf-title" }, [
+              el("h2", { id: "shelf-title", tabindex: "-1" }, ["The shelf"]),
+              el(
+                "div",
+                { class: "shelf-cards" },
+                this.cards.map((card) => card.element),
+              ),
+              el("div", { class: "open-bar" }, [this.openButton]),
+            ]),
+            this.dashboard.element,
           ]),
           el("div", { class: "side" }, [
             this.upgradesShop.element,
@@ -272,6 +278,7 @@ class CafeScreen {
     this.chalkboard.update(run);
     this.news.update(run);
     this.upgradesShop.update(run);
+    this.dashboard.update(run);
     this.cards.forEach((card) => {
       card.update(run);
     });
