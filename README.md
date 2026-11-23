@@ -2,6 +2,8 @@
 
 **Run a campus café for five days.** Start with €100 and an empty shelf, buy flat whites, toasties and brownies, set your prices, and open for the day. The till prints a receipt of what sold. After day five, see whether your café made money.
 
+**▶ Play it in your browser, nothing to install:** https://ethancalvert22.github.io/Ethan-Intro-to-Programming-project/
+
 Brew & Byte is the first release of _Campus Tycoon_ (Product 02) for the Nova SBE Introduction to Programming course. It is a TypeScript web app with no backend and no network use: it works offline and saves your progress in the browser.
 
 ![Brew & Byte on a desktop screen after two days of trading](docs/screenshots/desktop-2-receipt.png)
