@@ -810,6 +810,99 @@ p {
   font-style: italic;
 }
 
+/* High scores */
+
+.score-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.score-row {
+  display: grid;
+  grid-template-columns: 2rem auto 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--surface-sunk);
+  border-radius: var(--radius-small);
+  padding: 0.45rem 0.6rem;
+}
+
+.score-new {
+  outline: 2px solid var(--terracotta);
+  outline-offset: -2px;
+}
+
+.score-rank {
+  display: grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  background: var(--brown);
+  color: var(--cream-on-brown);
+  font-weight: 700;
+}
+
+.score-amount {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.score-gain {
+  color: var(--success);
+}
+
+.score-loss {
+  color: var(--danger);
+}
+
+.score-meta {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  min-width: 0;
+}
+
+.score-tag {
+  font-weight: 600;
+}
+
+.score-tag-events {
+  color: var(--terracotta);
+}
+
+.score-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--terracotta);
+}
+
+.scores-empty {
+  color: var(--ink-soft);
+}
+
+.scores-confirm-text {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.scores-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.final-score-note {
+  font-weight: 700;
+  color: var(--terracotta);
+}
+
 /* Final results */
 
 .final-card {

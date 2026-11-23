@@ -69,6 +69,7 @@ One small class, the **Shop** (`src/ui/shop.ts`), sits at the counter between th
 | `demand.ts`     | One small function: given a price and a reference price, how many customers want the item today (10, 5 or 0).                                              |
 | `run.ts`        | The heart of the game: `newRun`, `buy`, `setPrice`, `tradeDay`, `summary`. Each takes the current café and returns a new one, or a refusal.                |
 | `events.ts`     | **Campus events (version 2):** the list of events, how an event scales the number of customers, and how a seed becomes a repeatable week of events.        |
+| `highScores.ts` | **High scores:** what a score is, how a new score finds its place in the top five, and the promises a saved board must keep.                               |
 | `errors.ts`     | The five reasons the café can say no (`NotAffordable`, `InvalidQuantity`, `InvalidPrice`, `UnknownProduct`, `RunCompleted`), each with a friendly message. |
 | `result.ts`     | The "answer envelope": either `{ ok: true, value }` or `{ ok: false, error }`. Nothing in the rulebook ever crashes on bad input.                          |
 | `input.ts`      | Turns what the player typed (`"4,50"`, `" 12 "`) into whole numbers, or explains what is wrong.                                                            |
@@ -80,45 +81,48 @@ One small class, the **Shop** (`src/ui/shop.ts`), sits at the counter between th
 | File            | What it does                                                                                                                                                                       |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `runStore.ts`   | Saves the whole café as one entry under the key `brew-and-byte:run:v1`, loads it back, keeps a backup of a damaged save, and copes with a browser that blocks or fills up storage. |
+| `scoreStore.ts` | **High scores:** saves the board under its own key, separate from the run, and reads it back carefully.                                                                            |
 | `saveFormat.ts` | Reads saved text safely: parses it, upgrades old formats (`migrate`), checks every field's type, then asks the rulebook's invariants.                                              |
 
 ### `src/ui/` — the shop window
 
-| File              | What it does                                                                                                                                                             |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `shop.ts`         | The counter between screen and rules: performs an action, saves it, and only then makes it visible. Also decides what to do on startup (fresh, loaded, or damaged save). |
-| `app.ts`          | Builds the page and keeps it up to date: the till figures, the next-step hint, the shelf, the receipts, the final card.                                                  |
-| `shelfCard.ts`    | One card per product: stock count, order stepper with live total, price box with 10-cent nudges and a live demand hint.                                                  |
-| `chalkboard.ts`   | The five-day "chalkboard" showing which days are done and which is next.                                                                                                 |
-| `campusNews.ts`   | **Campus events:** the "Campus news" strip showing today's and tomorrow's event and the items each one affects.                                                          |
-| `receipt.ts`      | Draws one day's results as a till receipt.                                                                                                                               |
-| `demandPanel.ts`  | The always-visible "How customers decide" panel with its three-step picture.                                                                                             |
-| `finalCard.ts`    | The "Final results" card with an encouraging message for a gain, a loss, or breaking even.                                                                               |
-| `newRunDialog.ts` | The "Start a new run?" confirmation, using the browser's own `<dialog>`, with Cancel focused first.                                                                      |
-| `dom.ts`          | A tiny helper to create page elements without a framework.                                                                                                               |
-| `icons.ts`        | Small drawings (SVG) for the logo and each product. Drawn in code, so nothing is downloaded.                                                                             |
-| `styles.css`      | The look: cream, coffee-brown and terracotta; dark mode; phone layout; reduced motion.                                                                                   |
-| `../main.ts`      | The starting point: loads the styles and starts the app in the page.                                                                                                     |
+| File                 | What it does                                                                                                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `shop.ts`            | The counter between screen and rules: performs an action, saves it, and only then makes it visible. Also decides what to do on startup (fresh, loaded, or damaged save). |
+| `app.ts`             | Builds the page and keeps it up to date: the till figures, the next-step hint, the shelf, the receipts, the final card.                                                  |
+| `shelfCard.ts`       | One card per product: stock count, order stepper with live total, price box with 10-cent nudges and a live demand hint.                                                  |
+| `chalkboard.ts`      | The five-day "chalkboard" showing which days are done and which is next.                                                                                                 |
+| `campusNews.ts`      | **Campus events:** the "Campus news" strip showing today's and tomorrow's event and the items each one affects.                                                          |
+| `highScoresPanel.ts` | **High scores:** the side panel listing the best five runs, recording a run when it finishes, and the two-step "Clear high scores".                                      |
+| `receipt.ts`         | Draws one day's results as a till receipt.                                                                                                                               |
+| `demandPanel.ts`     | The always-visible "How customers decide" panel with its three-step picture.                                                                                             |
+| `finalCard.ts`       | The "Final results" card with an encouraging message for a gain, a loss, or breaking even.                                                                               |
+| `newRunDialog.ts`    | The "Start a new run?" confirmation, using the browser's own `<dialog>`, with Cancel focused first.                                                                      |
+| `dom.ts`             | A tiny helper to create page elements without a framework.                                                                                                               |
+| `icons.ts`           | Small drawings (SVG) for the logo and each product. Drawn in code, so nothing is downloaded.                                                                             |
+| `styles.css`         | The look: cream, coffee-brown and terracotta; dark mode; phone layout; reduced motion.                                                                                   |
+| `../main.ts`         | The starting point: loads the styles and starts the app in the page.                                                                                                     |
 
 ### `tests/` and `e2e/`
 
-| File                               | What it checks                                                                                                                              |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tests/helpers.ts`                 | Shared test tools, including `CountingStorage`, a fake browser storage that counts every write.                                             |
-| `tests/acceptance.test.ts`         | Runs everything in `spec/acceptance.json`.                                                                                                  |
-| `tests/domain/demand.test.ts`      | The demand rule and its exact boundaries.                                                                                                   |
-| `tests/domain/input.test.ts`       | Reading typed quantities and prices; money formatting.                                                                                      |
-| `tests/domain/run.test.ts`         | Buying, pricing, trading, the end of the run, the final summary.                                                                            |
-| `tests/domain/catalogue*.test.ts`  | Menu validation, including what happens if the menu file is broken.                                                                         |
-| `tests/domain/invariants.test.ts`  | That each kind of broken café state is caught.                                                                                              |
-| `tests/domain/properties.test.ts`  | Thousands of random action sequences: the promises always hold.                                                                             |
-| `tests/domain/playthrough.test.ts` | A full five-day game worked out by hand, and an independent reconciliation.                                                                 |
-| `tests/domain/events.test.ts`      | **Campus events:** the event list, the ×1.5 / ×0.5 maths and rounding, repeatable weeks, trading with events, and random games with events. |
-| `tests/storage/*.test.ts`          | Saving, loading, damaged saves, full or blocked storage.                                                                                    |
-| `tests/ui/shop.test.ts`            | Save-then-show, no writes on refusals, atomicity when a save fails, startup paths.                                                          |
-| `tests/ui/app.test.ts`             | The real screen code in a simulated browser: every button, message and state.                                                               |
-| `e2e/*.spec.ts`                    | The real built app in real Chromium: full run, reloads, dialog, keyboard, accessibility scan, phone.                                        |
-| `e2e/screenshots.spec.ts`          | Takes the screenshots in `docs/screenshots/`.                                                                                               |
+| File                                                                  | What it checks                                                                                                                              |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/helpers.ts`                                                    | Shared test tools, including `CountingStorage`, a fake browser storage that counts every write.                                             |
+| `tests/acceptance.test.ts`                                            | Runs everything in `spec/acceptance.json`.                                                                                                  |
+| `tests/domain/demand.test.ts`                                         | The demand rule and its exact boundaries.                                                                                                   |
+| `tests/domain/input.test.ts`                                          | Reading typed quantities and prices; money formatting.                                                                                      |
+| `tests/domain/run.test.ts`                                            | Buying, pricing, trading, the end of the run, the final summary.                                                                            |
+| `tests/domain/catalogue*.test.ts`                                     | Menu validation, including what happens if the menu file is broken.                                                                         |
+| `tests/domain/invariants.test.ts`                                     | That each kind of broken café state is caught.                                                                                              |
+| `tests/domain/properties.test.ts`                                     | Thousands of random action sequences: the promises always hold.                                                                             |
+| `tests/domain/playthrough.test.ts`                                    | A full five-day game worked out by hand, and an independent reconciliation.                                                                 |
+| `tests/domain/events.test.ts`                                         | **Campus events:** the event list, the ×1.5 / ×0.5 maths and rounding, repeatable weeks, trading with events, and random games with events. |
+| `tests/domain/highScores.test.ts`, `tests/storage/scoreStore.test.ts` | **High scores:** scoring, ranking, ties, the top-five limit, a seeded random test, saving and damaged boards.                               |
+| `tests/storage/*.test.ts`                                             | Saving, loading, damaged saves, full or blocked storage.                                                                                    |
+| `tests/ui/shop.test.ts`                                               | Save-then-show, no writes on refusals, atomicity when a save fails, startup paths.                                                          |
+| `tests/ui/app.test.ts`                                                | The real screen code in a simulated browser: every button, message and state.                                                               |
+| `e2e/*.spec.ts`                                                       | The real built app in real Chromium: full run, reloads, dialog, keyboard, accessibility scan, phone.                                        |
+| `e2e/screenshots.spec.ts`                                             | Takes the screenshots in `docs/screenshots/`.                                                                                               |
 
 ---
 
@@ -137,6 +141,7 @@ One small class, the **Shop** (`src/ui/shop.ts`), sits at the counter between th
 | **CT R4** Gross profit = revenue − cost of units sold; gain = cash + stock at cost − €100; no double deduction       | `run.ts › tradeLine`, `summary`                                                                                                       | `run.test.ts › "does not take the cost of stock out of the till a second time"`; `playthrough.test.ts`                         |
 | **CT R5** One day per trade, recorded once, never replayed on reload                                                 | `run.ts › tradeDay` (one record, one step); `runStore.ts › load` is read-only; `shop.ts › commit` saves the day and balances together | `run.test.ts › advances exactly one day…`; acceptance `A5`; `shop.test.ts › A5`, `is atomic`; `e2e/resume.spec.ts`             |
 | **Campus events** (version 2): a planned week; each day's event scales demand for the items it names                 | `events.ts › demandOnDay`, `scheduleFromSeed`; `run.ts › tradeDay`, `eventFor`; `saveFormat.ts › migrate`                             | `events.test.ts`; acceptance `E13`, `E14`; `saveFormat.test.ts › migrate`; `app.test.ts › campus events`; `e2e/events.spec.ts` |
+| **High scores**: best five finished runs, recorded once, kept across runs                                            | `highScores.ts › scoreFromRun`, `placeScore`, `findBoardProblem`; `scoreStore.ts`; `highScoresPanel.ts › record`                      | `highScores.test.ts`; `scoreStore.test.ts`; `app.test.ts › high scores`; `e2e/highscores.spec.ts`                              |
 
 ---
 
@@ -283,7 +288,35 @@ Example: exam week, flat white at its €2.80 fair price. Normally 10 customers;
 - _Isn't random unfair?_ Every player sees the event one day ahead, and the same week can't change once it's chosen. It rewards planning, not luck.
 - _How do you test something random?_ The tests give the rules fixed seeds or fixed weeks, so the outcome is known in advance. One test checks 500 seeds for valid weeks; another plays 300 random games with events and checks every promise still holds.
 
-## 10. Glossary
+## 10. High scores (feature owner: Gina)
+
+**What it is.** The game remembers your best five finished runs, across runs, with the date and whether the week had campus events. The Final results card tells you how the run did: "New personal best!", "That's number 3 on your high scores", or "Not in your top five this time".
+
+**What counts as the score.** The overall gain or loss on your €100, the same number the Final results card shows. Leftover stock counts at what it cost, so ending with stock isn't punished.
+
+**How a new score finds its place.** The board is always kept best first. A new score goes just below every score that is at least as good, so a tie never pushes an older score down. If five scores are already at least as good, it doesn't make the board and nothing is saved.
+
+**Why a run is never counted twice.** A score is recorded at exactly one moment: the trade that finishes day 5. That trade can only happen once, because a finished run refuses any more trading. Opening or reloading the game only _reads_ the board. Same idea as the run itself: loading never replays anything.
+
+**Why scores have their own storage key.** The run is saved under `brew-and-byte:run:v1` and replaced when you start a new run. Scores live under `brew-and-byte:scores:v1`, so a new run never touches them. Analogy: the till receipt gets thrown away each week, but the trophy shelf stays.
+
+**Where the date comes from.** The rules never read the clock; the screen passes in today's date. It uses your own calendar day, not "UTC" time, so a run finished at 11:30 pm is dated today, not tomorrow (a test checks exactly that).
+
+**When things go wrong.** If the saved scores can't be read, the board starts empty with a note, and the old text is backed up before anything new is saved. If even the backup fails, the old scores are left untouched.
+
+**Break it on purpose.**
+
+- In `src/domain/highScores.ts › placeScore`, change `>=` to `>`. Ties now push older scores down, and the tie test fails (1 test).
+- Change `HIGH_SCORE_LIMIT = 5` to `3`. The top-five tests fail (4 tests).
+- In `src/ui/app.ts › trade`, move the `this.scores.record(...)` line outside the `if (isComplete(...))` check. Every day of a run now posts a score, and 7 tests fail.
+
+**Likely questions.**
+
+- _What stops a reload adding a duplicate?_ Recording happens only in the trade that completes the run, and a completed run can't trade again. The tests reload a finished run and check the board and storage are unchanged.
+- _Why gain or loss and not final cash?_ Final cash ignores leftover stock, so it would rank a run lower just for holding stock.
+- _Why save nothing when a score misses the top five?_ The board didn't change, so there's nothing to save. The tests count storage writes to prove it.
+
+## 11. Glossary
 
 | Term                               | Meaning                                                                                                   |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -308,6 +341,8 @@ Example: exam week, flat white at its €2.80 fair price. Normally 10 customers;
 | **Migration**                      | Upgrading an old save to a newer format.                                                                  |
 | **Campus event**                   | Something happening on campus that day which brings more or fewer customers for some items.               |
 | **Seed**                           | A starting number for a repeatable "random" sequence: the same seed always gives the same week of events. |
+| **High score board**               | The list of your best five finished runs, kept in your browser across runs.                               |
+| **Tie**                            | Two runs with exactly the same result; the older one stays above.                                         |
 | **TypeScript**                     | JavaScript with types, which catches many mistakes before the code runs.                                  |
 | **Vite**                           | The tool that serves the app while developing and builds the final files.                                 |
 | **Vitest**                         | The tool that runs the unit tests.                                                                        |

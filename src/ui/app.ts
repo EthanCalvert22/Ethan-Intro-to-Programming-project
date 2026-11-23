@@ -3,12 +3,14 @@ import { formatEuros } from "../domain/money";
 import { RUN_LENGTH_DAYS } from "../domain/rules";
 import { daysCompleted, isComplete, summary, type Run } from "../domain/run";
 import { browserStorage, MemoryStorage, RunStore, type KeyValueStorage } from "../storage/runStore";
+import { ScoreStore } from "../storage/scoreStore";
 import { scheduleFromSeed } from "../domain/events";
 import { CampusNews } from "./campusNews";
 import { Chalkboard } from "./chalkboard";
 import { renderDemandPanel } from "./demandPanel";
 import { el, svgFromMarkup } from "./dom";
 import { renderFinalCard } from "./finalCard";
+import { HighScoresPanel } from "./highScoresPanel";
 import { logoIcon } from "./icons";
 import { NewRunDialog } from "./newRunDialog";
 import { renderReceipt } from "./receipt";
@@ -23,6 +25,14 @@ const randomWeek: WeekPlanner = () => {
   const [seed = 0] = crypto.getRandomValues(new Uint32Array(1));
   return scheduleFromSeed(seed);
 };
+
+/** Today's date on the player's own calendar, written YYYY-MM-DD. */
+function localToday(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
 
 const MEMORY_ONLY_NOTICE =
   "This browser isn't letting me save, so your café will only last until you close this page.";
@@ -51,7 +61,9 @@ function howToPlay(): HTMLElement {
         "Read the campus news: events like exam week change how many customers come. You can see tomorrow's too, so stock up early.",
       ]),
       el("li", {}, ["Press Open for the day to trade. Your till receipt shows what sold."]),
-      el("li", {}, ["Repeat for five days, then see your final results."]),
+      el("li", {}, [
+        "Repeat for five days, then see your final results. Your best five runs go on the high scores.",
+      ]),
     ]),
     el("p", { class: "hint" }, [
       "Your café is saved in this browser after every change, so you can leave and come back between days.",
@@ -64,6 +76,12 @@ function describeRun(run: Run): string {
     ? `all ${RUN_LENGTH_DAYS} days traded`
     : `day ${run.currentDay} of ${RUN_LENGTH_DAYS}`;
   return `${where}, ${formatEuros(run.cashCents)} in the till`;
+}
+
+/** What the café screen needs besides the Shop: where scores are kept, and today's date. */
+interface ScoreServices {
+  readonly scoreStore: ScoreStore;
+  readonly today: () => string;
 }
 
 /** The café screen: everything the player sees and touches while a run is open. */
@@ -95,13 +113,19 @@ class CafeScreen {
   });
   private readonly receiptSlot = el("div", { class: "receipt-slot" });
   private selectedDay: number | null = null;
+  /** How the run did on the high scores, shown on the final card right after it finishes. */
+  private scoreNote: string | null = null;
+
+  private readonly scores: HighScoresPanel;
 
   constructor(
     private readonly root: HTMLElement,
     private readonly shop: Shop,
     notice: string | null,
+    private readonly services: ScoreServices,
   ) {
     const run = shop.run;
+    this.scores = new HighScoresPanel(services.scoreStore, shop.catalogue);
     this.cards = shop.catalogue.map(
       (product) =>
         new ShelfCard(product, run, {
@@ -168,6 +192,7 @@ class CafeScreen {
               this.chips,
               this.receiptSlot,
             ]),
+            this.scores.element,
             howToPlay(),
           ]),
         ]),
@@ -206,6 +231,9 @@ class CafeScreen {
       this.selectedDay = this.run.history.length;
       this.refreshReceipts();
       if (isComplete(this.run)) {
+        // The only moment a run's score is recorded: the trade that finishes the run.
+        this.scoreNote = this.scores.record(this.run, this.services.today());
+        this.refreshFinalCard();
         this.root.querySelector<HTMLElement>("#final-title")?.focus();
       }
     }
@@ -219,6 +247,7 @@ class CafeScreen {
     const outcome = this.shop.startNewRun(withEvents);
     if (outcome.ok) {
       this.selectedDay = null;
+      this.scoreNote = null;
       this.cards.forEach((card) => {
         card.reset(this.run);
       });
@@ -277,9 +306,13 @@ class CafeScreen {
       return;
     }
     this.finalSlot.replaceChildren(
-      renderFinalCard(summary(this.run, this.shop.catalogue), () => {
-        this.askForNewRun();
-      }),
+      renderFinalCard(
+        summary(this.run, this.shop.catalogue),
+        () => {
+          this.askForNewRun();
+        },
+        this.scoreNote,
+      ),
     );
   }
 
@@ -322,12 +355,16 @@ class CafeScreen {
 }
 
 /** Shown instead of the café when the saved game cannot be read. */
-function showDamagedSave(root: HTMLElement, opening: Extract<Opening, { kind: "damaged" }>): void {
+function showDamagedSave(
+  root: HTMLElement,
+  opening: Extract<Opening, { kind: "damaged" }>,
+  services: ScoreServices,
+): void {
   const startFresh = el("button", { type: "button", class: "button button-primary" }, [
     "Start a fresh run",
   ]);
   startFresh.addEventListener("click", () => {
-    showOpening(root, opening.startFresh(), null);
+    showOpening(root, opening.startFresh(), null, services);
   });
   const heading = el("h2", { id: "damaged-title", tabindex: "-1" }, [
     "I couldn't open your saved café",
@@ -352,12 +389,17 @@ function showDamagedSave(root: HTMLElement, opening: Extract<Opening, { kind: "d
   heading.focus();
 }
 
-function showOpening(root: HTMLElement, opening: Opening, notice: string | null): void {
+function showOpening(
+  root: HTMLElement,
+  opening: Opening,
+  notice: string | null,
+  services: ScoreServices,
+): void {
   if (opening.kind === "damaged") {
-    showDamagedSave(root, opening);
+    showDamagedSave(root, opening, services);
     return;
   }
-  new CafeScreen(root, opening.shop, opening.notice ?? notice);
+  new CafeScreen(root, opening.shop, opening.notice ?? notice, services);
 }
 
 function showBrokenMenu(root: HTMLElement, problem: string): void {
@@ -374,12 +416,13 @@ function showBrokenMenu(root: HTMLElement, problem: string): void {
 
 /**
  * Starts the game inside `root`, using the browser's storage when it is available.
- * Tests pass their own week planner so the events they trade with are known in advance.
+ * Tests pass their own week planner and date, so the events and dates they see are known.
  */
 export function startApp(
   root: HTMLElement,
   scope: { readonly localStorage: KeyValueStorage },
   planWeek: WeekPlanner = randomWeek,
+  today: () => string = localToday,
 ): void {
   let catalogue: Catalogue;
   try {
@@ -389,10 +432,12 @@ export function startApp(
     return;
   }
   const storage = browserStorage(scope);
-  const store = new RunStore(storage ?? new MemoryStorage());
+  const playerStorage = storage ?? new MemoryStorage();
+  const store = new RunStore(playerStorage);
   showOpening(
     root,
     openShop(catalogue, store, planWeek),
     storage === null ? MEMORY_ONLY_NOTICE : null,
+    { scoreStore: new ScoreStore(playerStorage), today },
   );
 }
